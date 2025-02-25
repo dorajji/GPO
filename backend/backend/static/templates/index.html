@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  {% load static %}
+  <link rel="stylesheet" type="text/css" href="{% static 'styles\styles.css'%}"/>
+  <link rel="stylesheet" type="text/css" href="{% static 'styles\ckeditor5_styles.css'%}"/>
+
+  
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'assets\favicon\apple-touch-icon.png'%}"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'assets\favicon\favicon-32x32.png'%}"/>
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'assets\favicon\favicon-16x16.png'%}"/>
+  <link rel="manifest" href="{% static 'assets\favicon\site.webmanifest'%}"/>
+  <title>CGCAL</title>
+</head>
+
+<body>
+
+  <div class="home">
+    <div class="home__logo">
+      <picture class="home__picture">
+        <img src="static\assets\images\logo.jpg" class="home__img" alt="CGCAL" />
+      </picture>
+
+      <div class="home__name">
+        Combinatorial Generation Algorithms
+      </div>
+    </div>
+
+    <div class="home__find">
+      <input type="text" name="find" id="find" placeholder="Поисковой запрос" class="home__find-input find__input">
+
+      <button class="home__find-button" onclick="executeSearchQuery()">
+        НАЙТИ
+      </button>
+
+      <div class="home__find-href">
+        <a href="" class="home__find-href-content">
+
+        </a>
+      </div>
+
+    </div>
+
+    <div class="home__desc">
+      Онлайн-энциклопедия, содержащая систематизированную информацию о существующих алгоритмах комбинаторной генерации, их свойствах и имеющиеся ограничения применения.
+    </div>
+
+  </div>
+
+  <div class="footer__wrapper">
+    <div class="footer">
+      <div class="footer__text">
+        Последнее обновление
+      </div>
+    </div>
+  </div>
+</body>
+
+<script src="static\scripts\main.js"></script>
+<script src="static\scripts\find.js"></script>
+
+</html>
