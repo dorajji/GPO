@@ -1,0 +1,102 @@
+li{
+    color: black;
+    
+}
+img{
+    width: 100%;
+    height: 100%;
+}
+/* Общий стиль для абзацев */
+p {
+    text-align: justify; /* Выравнивание текста по ширине */
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+/* Маленькие экраны: ширина до 576px */
+@media (max-width: 576px) {
+    body {
+        font-size: 14px; /* Уменьшаем размер шрифта */
+        line-height: 1.4;
+    }
+    p {
+        font-size: 14px; /* Уменьшенный текст в абзацах */
+        line-height: 1.5;
+        text-align: left; /* Для маленьких экранов текст выравнивается влево */
+    }
+    h1 {
+        font-size: 24px;
+    }
+    h2 {
+        font-size: 20px;
+    }
+    h3 {
+        font-size: 18px;
+    }
+}
+
+/* Средние экраны: ширина от 577px до 768px */
+@media (min-width: 577px) and (max-width: 768px) {
+    body {
+        font-size: 15px;
+        line-height: 1.5;
+    }
+    p {
+        font-size: 15px;
+        line-height: 1.5;
+        text-align: justify;
+    }
+    h1 {
+        font-size: 28px;
+    }
+    h2 {
+        font-size: 24px;
+    }
+    h3 {
+        font-size: 20px;
+    }
+}
+
+/* Большие экраны: ширина от 769px до 992px */
+@media (min-width: 769px) and (max-width: 992px) {
+    body {
+        font-size: 16px;
+        line-height: 1.6;
+    }
+    p {
+        font-size: 16px;
+        line-height: 1.6;
+        text-align: justify;
+    }
+    h1 {
+        font-size: 32px;
+    }
+    h2 {
+        font-size: 28px;
+    }
+    h3 {
+        font-size: 24px;
+    }
+}
+
+/* Очень большие экраны: ширина от 993px и выше */
+@media (min-width: 993px) {
+    body {
+        font-size: 18px; /* Более крупный текст */
+        line-height: 1.8;
+    }
+    p {
+        font-size: 18px;
+        line-height: 1.8;
+        text-align: justify;
+    }
+    h1 {
+        font-size: 36px;
+    }
+    h2 {
+        font-size: 32px;
+    }
+    h3 {
+        font-size: 28px;
+    }
+}

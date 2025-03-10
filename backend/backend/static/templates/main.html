@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  {% load static %}
+  <link rel="stylesheet" type="text/css" href="{% static 'styles\ckeditor5_styles.css'%}"/>
+  <link rel="stylesheet" type="text/css" href="{% static 'styles\styles.css'%}"/>
+
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'assets\favicon\apple-touch-icon.png'%}"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'assets\favicon\favicon-32x32.png'%}"/>
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'assets\favicon\favicon-16x16.png'%}"/>
+  <link rel="manifest" href="{% static 'assets\favicon\site.webmanifest'%}"/>
+
+  {% csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  
+  <title>CGCAL</title>
+</head>
+
+<body>
+  <div class="header__wrapper">
+    <div class="main__header">
+
+      <div class="main__header-logo">
+        <picture class="main__header-picture">
+          <a  href="home" > <img src="static\assets\images\logo_white.png" class="home__img" alt="CGCAL" width="100px" height="70px"/></a>
+        </picture>
+        <div class="main__header-name">
+          <a href="#" class="main__header-name-href">❮ На главную</a>
+          <a class="main__header-id"></a>
+          <div id="error-message" style="color: red; display: none;">Запрос не найден.</div> 
+        </div>
+      </div>
+
+      <div class="main__header-selector">
+        <select class="main__header-select" id="type">
+          <option></option>
+        </select>
+      </div>
+
+      <div class="main__header-search-box">
+        <input type="text" id="find" name="find" placeholder="Введите номер последовательности" class="main__header-search-input find__input"  >
+        <button class="main__header-search-button" onclick="executeSearchQuery()">Найти</button>
+      </div>
+
+    </div>
+  </div>
+  <div class="info__wrapper">
+    <div class="info__block">
+      <div class="info__name">
+        Числовая последовательность
+      </div>
+      <div class="info__desc info__block1">
+      </div>
+    </div>
+
+    <div class="info__block ">
+      <div class="info__name">
+        Комбинаторная интерпретация
+      </div>
+      <div class="info__desc info__block2">
+      </div>
+    </div>
+  </div>
+  <div class="func-block-wrapper">
+    <div class="func-block__left">
+
+      <div class="func-block__left-choose">
+        <div class="func-block__left-text ">Алгоритм комбинаторной генерации</div>
+        <select class="func-block__left-select">
+          <option></option>
+        </select>
+      </div>
+
+      <div class="func-block__left-functional">
+        <div class="func-block__left-param">
+        </div>
+      </div>
+
+      <div class="func-block__left-solve">
+        <button class="func-block__left-button" onclick="solve()">
+          Вычислить
+        </button>
+        <textarea class="func-block__left-main_textarea" id="func-block__left-main_textarea" readonly>
+        </textarea>
+      </div>
+    </div>
+
+    <div class="func-block__right">
+      <div class="func-block__right-name"></div>
+      <div class="func-block__right-desc" contenteditable></div>
+    </div>
+  </div>
+  <div class="footer__wrapper">
+    <div class="footer">
+      <div class="footer__text">
+        Последнее обновление
+      </div>
+    </div>
+  </div>
+</body>
+
+<script src="static\scripts\main.js"></script>
+<script src="static\scripts\find.js"></script>
+<script>
+  MathJax = {
+      chtml: {
+          scale: 1.00
+      },
+      svg: {
+          scale: 1.00
+      }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+
+</html>
