@@ -2,6 +2,17 @@ async function executeSearchQuery() {
     const query = document.querySelector('.find__input').value.trim();
 
     if (query) {
+        // Проверяем, является ли запрос числовой последовательностью
+        const isSequence = /^\d+(?:\s*,\s*\d+)*$/.test(query);
+        
+        if (isSequence) {
+            // Если это числовая последовательность, перенаправляем на OEIS
+            const searchSequence = query.replace(/\s+/g, '');
+            const url = `https://oeis.org/search?q=${encodeURIComponent(searchSequence)}&language=russian&go=Поиск`;
+            window.location.href = url;
+            return;
+        }
+
         try {
             const response = await fetch(`/search_seq?query=${encodeURIComponent(query)}`);
             if (!response.ok) {
@@ -10,7 +21,7 @@ async function executeSearchQuery() {
             
             const searchResults = await response.json();
             
-            if (searchResults.length > 0) {
+            if (searchResults && searchResults.length > 0) {
                 // Если найден хотя бы один результат
                 if (searchResults.length === 1) {
                     // Если найден только один результат, переходим на его страницу
@@ -20,11 +31,12 @@ async function executeSearchQuery() {
                     displaySearchResults(searchResults);
                 }
             } else {
-                alert('Ничего не найдено по вашему запросу.');
+                // Если результатов нет, показываем сообщение
+                noResults();
             }
         } catch (error) {
             console.error('Произошла ошибка:', error);
-            alert('Не удалось выполнить поиск. Попробуйте позже.');
+            noResults();
         }
     } else {
         alert('Введите запрос для поиска.');
@@ -66,6 +78,58 @@ function displaySearchResults(results) {
         resultsList.appendChild(listItem);
     });
     
+    resultsContainer.appendChild(resultsList);
+    
+    // Удаляем предыдущие результаты поиска, если они есть
+    const existingResults = document.querySelector('.search-results');
+    if (existingResults) {
+        existingResults.remove();
+    }
+    
+    // Добавляем результаты после поля ввода
+    const searchInput = document.querySelector('.find__input');
+    searchInput.parentNode.insertBefore(resultsContainer, searchInput.nextSibling);
+}
+
+function noResults() {
+    // Создаем контейнер для результатов поиска
+    const resultsContainer = document.createElement('div');
+    resultsContainer.className = 'search-results';
+    
+    // Создаем заголовок
+    const header = document.createElement('h3');
+    header.textContent = 'Результаты поиска:';
+    resultsContainer.appendChild(header);
+    
+    // Создаем список результатов
+    const resultsList = document.createElement('ul');
+    resultsList.className = 'search-results__list';
+    
+    // Создаем элемент списка с сообщением
+    const listItem = document.createElement('li');
+    listItem.className = 'search-results__item search-results__item--no-results';
+    
+    const messageText = document.createElement('p');
+    messageText.textContent = 'По вашему запросу ничего не найдено. Попробуйте поискать по:';
+    
+    const suggestionsList = document.createElement('ul');
+    suggestionsList.className = 'search-results__suggestions';
+    
+    const suggestions = [
+        'OEIS ID (например, A000045)',
+        'Числовой последовательности (например: 1,2,3,4)',
+        'Названию алгоритма'
+    ];
+    
+    suggestions.forEach(suggestion => {
+        const suggestionItem = document.createElement('li');
+        suggestionItem.textContent = suggestion;
+        suggestionsList.appendChild(suggestionItem);
+    });
+    
+    listItem.appendChild(messageText);
+    listItem.appendChild(suggestionsList);
+    resultsList.appendChild(listItem);
     resultsContainer.appendChild(resultsList);
     
     // Удаляем предыдущие результаты поиска, если они есть
