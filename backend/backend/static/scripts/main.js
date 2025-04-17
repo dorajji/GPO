@@ -4,12 +4,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadSequenceList();
   await loadLastUpdate();
   
-
-  // Extract OEIS ID and initialize data on the main page
-  const oeisId = document.querySelector('.main__header-id')?.textContent.trim();
+  // Extract OEIS ID and interpretation from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const oeisId = urlParams.get('find');
+  const interpretationName = urlParams.get('interp');
+  
   if (oeisId) {
       await loadSequence(oeisId);
       await loadInterpretations(oeisId);
+      
+      // Если указана интерпретация, выбираем её в селекторе
+      if (interpretationName) {
+          const selector = document.querySelector('.main__header-select');
+          for (let i = 0; i < selector.options.length; i++) {
+              if (selector.options[i].text === interpretationName) {
+                  selector.selectedIndex = i;
+                  break;
+              }
+          }
+          await loadInterpretationsDetails();
+      }
+      
       await loadAlgorithmsByInterpretation();
   }
 
@@ -86,6 +101,24 @@ async function loadInterpretations(oeisId) {
               }
           });
 
+          // Проверяем, есть ли параметр interp в URL
+          const urlParams = new URLSearchParams(window.location.search);
+          const interpretationName = urlParams.get('interp');
+          
+          if (interpretationName) {
+              // Если есть параметр interp, выбираем соответствующую интерпретацию
+              for (let i = 0; i < selector.options.length; i++) {
+                  if (selector.options[i].text === interpretationName) {
+                      selector.selectedIndex = i;
+                      break;
+                  }
+              }
+          } else if (selector.options.length > 0) {
+              // Если параметра interp нет, выбираем первую интерпретацию
+              selector.selectedIndex = 0;
+          }
+          
+          // Загружаем детали выбранной интерпретации
           await loadInterpretationsDetails();
       } else {
           console.error('Error loading interpretations.');
@@ -118,22 +151,38 @@ async function loadSequence(oeisId) {
 async function loadInterpretationsDetails() {
   const selector = document.querySelector('.main__header-select');
   const interpretationName = selector.options[selector.selectedIndex]?.text;
+  const oeisId = document.querySelector('.main__header-id')?.textContent.trim();
+
+  if (!interpretationName || !oeisId) return;
 
   try {
       const response = await fetch(`/interp?interpretation_name=${interpretationName}`);
       if (response.ok) {
           const interpData = await response.json();
+          
+          // Отображаем данные интерпретации
           const infoWrapper = document.querySelector('.info__block2');
           infoWrapper.innerHTML = `
               <div style="display:none" class="for_interp_id">${interpData[0].id}</div>
               <div>${interpData[0].interpretation_description}</div>
           `;
           await MathJax.typesetPromise([infoWrapper]);
+          
+          // Загружаем алгоритмы для выбранной интерпретации
+          await loadAlgorithmsByInterpretation();
+          
+          // Проверяем, соответствует ли текущий URL выбранной интерпретации
+          const urlParams = new URLSearchParams(window.location.search);
+          const currentInterp = urlParams.get('interp');
+          
+          if (currentInterp !== interpretationName) {
+              // Если интерпретация изменилась, создаем новую страницу
+              const newUrl = `/main?find=${oeisId}&interp=${encodeURIComponent(interpretationName)}`;
+              window.location.href = newUrl;
+          }
       } else {
           console.error('Error loading interpretation details.');
       }
-
-      await loadAlgorithmsByInterpretation();
   } catch (error) {
       console.error('Error occurred while loading interpretation details:', error);
   }
@@ -157,6 +206,24 @@ async function loadAlgorithmsByInterpretation() {
               selector.appendChild(option);
           });
 
+          // Проверяем, есть ли параметр alg в URL
+          const urlParams = new URLSearchParams(window.location.search);
+          const algName = urlParams.get('alg');
+          
+          if (algName) {
+              // Если есть параметр alg, выбираем соответствующий алгоритм
+              for (let i = 0; i < selector.options.length; i++) {
+                  if (selector.options[i].text === algName) {
+                      selector.selectedIndex = i;
+                      break;
+                  }
+              }
+          } else if (selector.options.length > 0) {
+              // Если параметра alg нет, выбираем первый алгоритм
+              selector.selectedIndex = 0;
+          }
+          
+          // Загружаем детали выбранного алгоритма
           await loadAlgorithmDetails();
       } else {
           console.error('Error loading algorithms.');
@@ -220,6 +287,22 @@ async function loadAlgorithmDetails() {
           }
 
           funcWrapper.insertBefore(paramsWrapper, funcWrapper.firstChild);
+          
+          // Проверяем, соответствует ли текущий URL выбранному алгоритму
+          const urlParams = new URLSearchParams(window.location.search);
+          const currentAlg = urlParams.get('alg');
+          const oeisId = urlParams.get('find');
+          const interpretationName = urlParams.get('interp');
+          
+          if (currentAlg !== algName) {
+              // Если алгоритм изменился, создаем новую страницу
+              let newUrl = `/main?find=${oeisId}`;
+              if (interpretationName) {
+                  newUrl += `&interp=${encodeURIComponent(interpretationName)}`;
+              }
+              newUrl += `&alg=${encodeURIComponent(algName)}`;
+              window.location.href = newUrl;
+          }
       } else {
           console.error('Error loading algorithm details.');
       }

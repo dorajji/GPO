@@ -4,12 +4,36 @@ async function executeSearchQuery() {
     if (query) {
         // Проверяем, является ли запрос числовой последовательностью
         const isSequence = /^\d+(?:\s*,\s*\d+)*$/.test(query);
+        const isOEIS = /[AB]\d{0,6}$/.test(query);
         
         if (isSequence) {
             // Если это числовая последовательность, перенаправляем на OEIS
             const searchSequence = query.replace(/\s+/g, '');
             const url = `https://oeis.org/search?q=${encodeURIComponent(searchSequence)}&language=russian&go=Поиск`;
             window.location.href = url;
+            return;
+        }
+
+        else if (isOEIS) {
+            try {
+                const response = await fetch(`/search_SeqSelect?query=${encodeURIComponent(query)}`);
+                if (!response.ok) {
+                    throw new Error('Ошибка при выполнении запроса к серверу.');
+                }
+                
+                const searchResults = await response.json();
+                
+                if (searchResults && searchResults.length === 1) {
+                    window.location.href = `/main?find=${encodeURIComponent(query)}`;
+                } else if (searchResults && searchResults.length > 1) {
+                    displaySearchResults(searchResults);
+                } else {
+                    noResults();
+                }
+            } catch (error) {
+                console.error('Произошла ошибка:', error);
+                noResults();
+            }
             return;
         }
 
@@ -67,7 +91,7 @@ function displaySearchResults(results) {
         // Формируем текст результата
         let resultText = `${result.OEIS_ID}`;
         if (result.sequence_name) {
-            resultText += ` - ${result.sequence_name}`;
+            resultText += ` – ${result.sequence_name}`;
         }
         if (result.alg_name) {
             resultText += ` (${result.alg_name})`;
