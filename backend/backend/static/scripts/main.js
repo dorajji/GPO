@@ -162,6 +162,7 @@ async function loadInterpretationsDetails() {
           
           // Отображаем данные интерпретации
           const infoWrapper = document.querySelector('.info__block2');
+          infoWrapper.style.minHeight = infoWrapper.offsetHeight + 'px'; // Сохраняем текущую высоту
           infoWrapper.innerHTML = `
               <div style="display:none" class="for_interp_id">${interpData[0].id}</div>
               <div>${interpData[0].interpretation_description}</div>
@@ -171,15 +172,9 @@ async function loadInterpretationsDetails() {
           // Загружаем алгоритмы для выбранной интерпретации
           await loadAlgorithmsByInterpretation();
           
-          // Проверяем, соответствует ли текущий URL выбранной интерпретации
-          const urlParams = new URLSearchParams(window.location.search);
-          const currentInterp = urlParams.get('interp');
-          
-          if (currentInterp !== interpretationName) {
-              // Если интерпретация изменилась, создаем новую страницу
-              const newUrl = `/main?find=${oeisId}&interp=${encodeURIComponent(interpretationName)}`;
-              window.location.href = newUrl;
-          }
+          // Обновляем URL без перезагрузки страницы
+          const newUrl = `/main?find=${oeisId}&interp=${encodeURIComponent(interpretationName)}`;
+          window.history.pushState({}, '', newUrl);
       } else {
           console.error('Error loading interpretation details.');
       }
@@ -247,6 +242,11 @@ async function loadAlgorithmDetails() {
           const paramsWrapper = document.querySelector('.func-block__left-param');
           const funcWrapper = document.querySelector('.func-block__left-functional');
 
+          // Сохраняем текущие высоты блоков
+          infoWrapper.style.minHeight = infoWrapper.offsetHeight + 'px';
+          paramsWrapper.style.minHeight = paramsWrapper.offsetHeight + 'px';
+          funcWrapper.style.minHeight = funcWrapper.offsetHeight + 'px';
+
           infoWrapper.innerHTML = `
               <div class="func-block__right-name">${algData[0].field_name}</div>
               <div class="func-block__right-desc">${algData[0].field_description}</div>
@@ -288,21 +288,17 @@ async function loadAlgorithmDetails() {
 
           funcWrapper.insertBefore(paramsWrapper, funcWrapper.firstChild);
           
-          // Проверяем, соответствует ли текущий URL выбранному алгоритму
+          // Обновляем URL без перезагрузки страницы
           const urlParams = new URLSearchParams(window.location.search);
-          const currentAlg = urlParams.get('alg');
           const oeisId = urlParams.get('find');
           const interpretationName = urlParams.get('interp');
           
-          if (currentAlg !== algName) {
-              // Если алгоритм изменился, создаем новую страницу
-              let newUrl = `/main?find=${oeisId}`;
-              if (interpretationName) {
-                  newUrl += `&interp=${encodeURIComponent(interpretationName)}`;
-              }
-              newUrl += `&alg=${encodeURIComponent(algName)}`;
-              window.location.href = newUrl;
+          let newUrl = `/main?find=${oeisId}`;
+          if (interpretationName) {
+              newUrl += `&interp=${encodeURIComponent(interpretationName)}`;
           }
+          newUrl += `&alg=${encodeURIComponent(algName)}`;
+          window.history.pushState({}, '', newUrl);
       } else {
           console.error('Error loading algorithm details.');
       }
@@ -372,5 +368,40 @@ function setupEventListeners() {
   selectorAlg.addEventListener('change', () => {
       loadAlgorithmDetails();
       document.querySelector('.func-block__left-main_textarea').innerHTML = '';
+  });
+
+  // Обработчик для кнопки "Назад" в браузере
+  window.addEventListener('popstate', async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const oeisId = urlParams.get('find');
+      const interpretationName = urlParams.get('interp');
+      const algName = urlParams.get('alg');
+
+      if (oeisId) {
+          await loadSequence(oeisId);
+          await loadInterpretations(oeisId);
+          
+          if (interpretationName) {
+              const selector = document.querySelector('.main__header-select');
+              for (let i = 0; i < selector.options.length; i++) {
+                  if (selector.options[i].text === interpretationName) {
+                      selector.selectedIndex = i;
+                      break;
+                  }
+              }
+              await loadInterpretationsDetails();
+          }
+          
+          if (algName) {
+              const selectorAlg = document.querySelector('.func-block__left-select');
+              for (let i = 0; i < selectorAlg.options.length; i++) {
+                  if (selectorAlg.options[i].text === algName) {
+                      selectorAlg.selectedIndex = i;
+                      break;
+                  }
+              }
+              await loadAlgorithmDetails();
+          }
+      }
   });
 }

@@ -101,38 +101,176 @@ def search_SeqSelect(request):
             'sequence_name': seq.sequence_name
         } for seq in sequences], safe=False)
 
-    # Поиск по OEIS_ID и числовой последовательности
-    sequences = sequence_desc.objects.filter(
-        Q(OEIS_ID__icontains=query) |
-        Q(sequence_name__icontains=query)
-    )
+    # Проверяем, является ли запрос OEIS ID
+    import re
+    oeis_pattern = re.compile(r'^[ABab]?\d{1,6}$', re.IGNORECASE)
+    is_oeis_id = oeis_pattern.match(query)
 
-    # Поиск по названию алгоритма
-    algorithms = algorithm.objects.filter(alg_name__icontains=query)
+    if is_oeis_id:
+        # Нормализуем запрос для поиска
+        normalized_query = query.upper()
+        if not normalized_query.startswith('A') and not normalized_query.startswith('B'):
+            normalized_query = 'A' + normalized_query
+
+        # Сначала ищем точное совпадение
+        sequences = sequence_desc.objects.filter(
+            Q(OEIS_ID__iexact=normalized_query)
+        )
+        
+        # Если не нашли по точному совпадению, пробуем поиск по частичному совпадению
+        if not sequences.exists():
+            # Удаляем ведущие нули для частичного поиска
+            clean_query = normalized_query.lstrip('0')
+            if clean_query != normalized_query:
+                sequences = sequence_desc.objects.filter(
+                    Q(OEIS_ID__iexact=normalized_query) |
+                    Q(OEIS_ID__istartswith=clean_query)
+                )
+            else:
+                sequences = sequence_desc.objects.filter(
+                    Q(OEIS_ID__istartswith=normalized_query)
+                )
+    else:
+        # Если это не OEIS ID, ищем по другим полям
+        sequences = sequence_desc.objects.filter(
+            Q(sequence_name__icontains=query) |
+            Q(sequence_description__icontains=query)
+        )
+
+    # Поиск по числовой последовательности
+    if query.replace(',', '').replace(' ', '').isdigit():
+        sequences_from_numbers = sequence_desc.objects.filter(
+            Q(sequence_name__icontains=query) |
+            Q(sequence_description__icontains=query)
+        )
+        sequences = sequences | sequences_from_numbers
+
+    # Поиск по интерпретациям
+    interpretations = interpretation.objects.filter(
+        Q(interpretation_name__icontains=query) |
+        Q(interpretation_description__icontains=query)
+    )
+    sequence_ids_from_interp = sequence_tb.objects.filter(
+        Interp_ID__in=interpretations
+    ).values_list('M_ID', flat=True)
+    sequences_from_interp = sequence_desc.objects.filter(M_ID__in=sequence_ids_from_interp)
+
+    # Поиск по алгоритмам
+    algorithms = algorithm.objects.filter(
+        Q(alg_name__icontains=query) |
+        Q(field_description__icontains=query) |
+        Q(alg_code__icontains=query)
+    )
     sequence_ids_from_alg = sequence_tb.objects.filter(
         Alg_ID__in=algorithms
     ).values_list('M_ID', flat=True)
-    
     sequences_from_alg = sequence_desc.objects.filter(M_ID__in=sequence_ids_from_alg)
 
-    all_sequences = sequences | sequences_from_alg
+    # Объединяем все результаты
+    all_sequences = sequences | sequences_from_interp | sequences_from_alg
     
     results = []
     seen_ids = set()
 
     for seq in all_sequences:
         if seq.M_ID not in seen_ids:
+            # Получаем связанные алгоритмы
             related_algs = algorithm.objects.filter(
                 sequence_tb__M_ID=seq.M_ID
-            ).values_list('alg_name', flat=True)
+            )
             
+            # Получаем связанные интерпретации
+            related_interps = interpretation.objects.filter(
+                sequence_tb__M_ID=seq.M_ID
+            )
+
+            # Формируем результат
             result = {
                 'OEIS_ID': seq.OEIS_ID,
                 'sequence_name': seq.sequence_name,
+                'matches': []
             }
-            
+
+            # Проверяем совпадения в названии и описании последовательности
+            if query.lower() in seq.sequence_name.lower():
+                result['matches'].append({
+                    'type': 'sequence_name',
+                    'text': seq.sequence_name
+                })
+            if query.lower() in seq.sequence_description.lower():
+                # Находим фрагмент текста с совпадением
+                description = seq.sequence_description.lower()
+                query_lower = query.lower()
+                start = description.find(query_lower)
+                if start != -1:
+                    # Берем контекст вокруг совпадения
+                    context_start = max(0, start - 50)
+                    context_end = min(len(description), start + len(query) + 50)
+                    context = seq.sequence_description[context_start:context_end]
+                    if context_start > 0:
+                        context = '...' + context
+                    if context_end < len(description):
+                        context = context + '...'
+                    result['matches'].append({
+                        'type': 'sequence_description',
+                        'text': context
+                    })
+
+            # Проверяем совпадения в алгоритмах
+            for alg in related_algs:
+                if query.lower() in alg.alg_name.lower():
+                    result['matches'].append({
+                        'type': 'algorithm_name',
+                        'text': alg.alg_name
+                    })
+                if query.lower() in alg.field_description.lower():
+                    # Находим фрагмент текста с совпадением
+                    description = alg.field_description.lower()
+                    query_lower = query.lower()
+                    start = description.find(query_lower)
+                    if start != -1:
+                        # Берем контекст вокруг совпадения
+                        context_start = max(0, start - 50)
+                        context_end = min(len(description), start + len(query) + 50)
+                        context = alg.field_description[context_start:context_end]
+                        if context_start > 0:
+                            context = '...' + context
+                        if context_end < len(description):
+                            context = context + '...'
+                        result['matches'].append({
+                            'type': 'algorithm_description',
+                            'text': context
+                        })
+
+            # Проверяем совпадения в интерпретациях
+            for interp in related_interps:
+                if query.lower() in interp.interpretation_name.lower():
+                    result['matches'].append({
+                        'type': 'interpretation_name',
+                        'text': interp.interpretation_name
+                    })
+                if query.lower() in interp.interpretation_description.lower():
+                    # Находим фрагмент текста с совпадением
+                    description = interp.interpretation_description.lower()
+                    query_lower = query.lower()
+                    start = description.find(query_lower)
+                    if start != -1:
+                        # Берем контекст вокруг совпадения
+                        context_start = max(0, start - 50)
+                        context_end = min(len(description), start + len(query) + 50)
+                        context = interp.interpretation_description[context_start:context_end]
+                        if context_start > 0:
+                            context = '...' + context
+                        if context_end < len(description):
+                            context = context + '...'
+                        result['matches'].append({
+                            'type': 'interpretation_description',
+                            'text': context
+                        })
+
+            # Добавляем информацию об алгоритмах
             if related_algs:
-                result['alg_name'] = ', '.join(related_algs)
+                result['alg_name'] = ', '.join(alg.alg_name for alg in related_algs)
             
             results.append(result)
             seen_ids.add(seq.M_ID)
