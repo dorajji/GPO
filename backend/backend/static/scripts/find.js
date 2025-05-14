@@ -179,7 +179,7 @@ function displaySearchResults(results) {
                     // Добавляем текст совпадения
                     const matchText = document.createElement('span');
                     matchText.className = 'search-result__match-text';
-                    matchText.textContent = match.text;
+                    matchText.textContent = extractCleanText(match.text);
                     matchItem.appendChild(matchText);
                     
                     matchesContainer.appendChild(matchItem);
@@ -228,11 +228,11 @@ function getBlockTitle(type) {
 
 function getMatchTypeLabel(type) {
     const labels = {
-        'sequence_name': 'Название последовательности: ',
-        'sequence_description': 'Описание последовательности: ',
-        'algorithm_name': 'Название алгоритма: ',
+        'sequence_name': 'Название: ',
+        'sequence_description': 'Описание: ',
+        'algorithm_name': 'Алгоритм: ',
         'algorithm_description': 'Описание алгоритма: ',
-        'interpretation_name': 'Название интерпретации: ',
+        'interpretation_name': 'Интерпретация: ',
         'interpretation_description': 'Описание интерпретации: '
     };
     return labels[type] || '';
@@ -396,4 +396,24 @@ if (searchQuery) {
     // Показываем сообщение об ошибке, если параметра нет
     errorMessageElement.style.display = 'block';
     errorMessageElement.textContent = 'Запрос не найден.';
+}
+
+function extractCleanText(html) {
+    // Удаляем все style="..." и style='...'
+    let text = html.replace(/style="[^"]*"/gi, '');
+    text = text.replace(/style='[^']*'/gi, '');
+
+    text = text.replace(/\\\(/g, '');
+    text = text.replace(/\\\)/g, '');
+
+    // Удаляем все теги <...> (даже если они незакрыты)
+    for (let i = 0; i < 3; i++) {
+        text = text.replace(/<[^>]*>/g, '');
+        text = text.replace(/^[^>]*>/, '');
+    }
+    // Декодируем спецсимволы
+    const div = document.createElement('div');
+    div.innerHTML = text;
+    text = div.textContent || div.innerText || '';
+    return text.trim();
 }
