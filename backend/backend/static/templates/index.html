@@ -31,19 +31,15 @@
     </div>
 
     <div class="home__find">
-      <input type="text" name="find" id="find" placeholder="Поисковой запрос" class="home__find-input find__input">
-
-      <button class="home__find-button" onclick="executeSearchQuery()">
-        НАЙТИ
-      </button>
-
-      <div class="home__find-href">
-        <a href="" class="home__find-href-content">
-
-        </a>
+      <div class="home__find-row" style="display: flex; align-items: center; gap: 10px; margin-top: 70px;">
+        <input type="text" name="find" id="find" placeholder="Поисковой запрос" class="home__find-input find__input">
+        <button class="home__find-button" onclick="executeSearchQuery()">НАЙТИ</button>
       </div>
-
+      <div class="home__find-href">
+        <a href="" class="home__find-href-content"></a>
+      </div>
     </div>
+    <div id="search-results-container"></div>
 
     <div class="home__desc">
       Онлайн-энциклопедия, содержащая систематизированную информацию о существующих алгоритмах комбинаторной генерации, их свойствах и имеющиеся ограничения применения.

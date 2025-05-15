@@ -72,11 +72,34 @@ async function executeSearchQuery() {
             noResults();
         }
     } else {
-        alert('Введите запрос для поиска.');
+        // Создаем контейнер для сообщения об ошибке
+        const resultsContainer = document.createElement('div');
+        resultsContainer.className = 'search-results';
+        
+        // Создаем заголовок
+        const header = document.createElement('h3');
+        header.textContent = 'Результаты поиска:';
+        resultsContainer.appendChild(header);
+        
+        // Создаем сообщение об ошибке
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'search-results__error';
+        errorMessage.textContent = 'Введите запрос для поиска!';
+        
+        resultsContainer.appendChild(errorMessage);
+        
+        // Удаляем предыдущие результаты поиска, если они есть
+        const resultsRoot = document.getElementById('search-results-container');
+        resultsRoot.innerHTML = '';
+        resultsRoot.appendChild(resultsContainer);
     }
 }
 
 function displaySearchResults(results) {
+    // Скрываем блок с гиперссылками
+    const hrefBlock = document.querySelector('.home__find-href');
+    if (hrefBlock) hrefBlock.style.display = 'none';
+
     // Создаем контейнер для результатов поиска
     const resultsContainer = document.createElement('div');
     resultsContainer.className = 'search-results';
@@ -141,11 +164,14 @@ function displaySearchResults(results) {
             resultContent.className = 'search-result__content';
             
             // Создаем ссылку на последовательность
+            const linkBlock = document.createElement('div');
+            linkBlock.className = 'search-result__link-block';
             const link = document.createElement('a');
             link.href = `/main?find=${encodeURIComponent(result.OEIS_ID)}`;
             link.textContent = `${result.OEIS_ID}`;
             link.className = 'search-result__link';
-            resultContent.appendChild(link);
+            linkBlock.appendChild(link);
+            resultContent.appendChild(linkBlock);
             
             // Добавляем название последовательности
             if (result.sequence_name) {
@@ -207,14 +233,9 @@ function displaySearchResults(results) {
     if (algorithmBlock) resultsContainer.appendChild(algorithmBlock);
     
     // Удаляем предыдущие результаты поиска, если они есть
-    const existingResults = document.querySelector('.search-results');
-    if (existingResults) {
-        existingResults.remove();
-    }
-    
-    // Добавляем результаты после поля ввода
-    const searchInput = document.querySelector('.find__input');
-    searchInput.parentNode.insertBefore(resultsContainer, searchInput.nextSibling);
+    const resultsRoot = document.getElementById('search-results-container');
+    resultsRoot.innerHTML = '';
+    resultsRoot.appendChild(resultsContainer);
 }
 
 function getBlockTitle(type) {
@@ -247,6 +268,40 @@ style.textContent = `
         background: #fff;
         border-radius: 5px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        width: 690px;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .main__header-search-box {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .main__header-search-input {
+        flex: 1;
+        height: 40px;
+        padding: 0 15px;
+        border: 2px solid #3B388D;
+        border-radius: 5px;
+        font-size: 16px;
+    }
+
+    .main__header-search-button {
+        height: 40px;
+        padding: 0 20px;
+        background-color: #3B388D;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        white-space: nowrap;
+    }
+
+    .main__header-search-button:hover {
+        background-color: #2e2c74;
     }
     
     .search-results__block {
@@ -283,6 +338,8 @@ style.textContent = `
         display: flex;
         flex-direction: column;
         gap: 5px;
+        justify-content: flex-start;
+        justify-items: flex-start;
     }
     
     .search-result__link {
@@ -321,6 +378,22 @@ style.textContent = `
         display: block;
         margin-top: 3px;
         white-space: pre-wrap;
+    }
+        
+    h3{
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+    
+    .search-results__error {
+        padding: 15px;
+        margin: 10px 0;
+        background-color: #fff3f3;
+        border: 1px solid #ffcdd2;
+        border-radius: 4px;
+        color: #d32f2f;
+        font-size: 16px;
+        text-align: center;
     }
 `;
 document.head.appendChild(style);
@@ -365,16 +438,21 @@ function noResults() {
     listItem.appendChild(suggestionsList);
     resultsList.appendChild(listItem);
     resultsContainer.appendChild(resultsList);
-    
+
     // Удаляем предыдущие результаты поиска, если они есть
-    const existingResults = document.querySelector('.search-results');
-    if (existingResults) {
-        existingResults.remove();
+    const resultsRoot = document.getElementById('search-results-container');
+    resultsRoot.innerHTML = '';
+    resultsRoot.appendChild(resultsContainer);
+
+    // Показываем блок с гиперссылками под результатами
+    const hrefBlock = document.querySelector('.home__find-href');
+    if (hrefBlock) {
+        hrefBlock.style.display = '';
+        // Вставляем после блока результатов
+        if (resultsRoot.nextSibling !== hrefBlock) {
+            resultsRoot.parentNode.insertBefore(hrefBlock, resultsRoot.nextSibling);
+        }
     }
-    
-    // Добавляем результаты после поля ввода
-    const searchInput = document.querySelector('.find__input');
-    searchInput.parentNode.insertBefore(resultsContainer, searchInput.nextSibling);
 }
 
 function getQueryParam(param) {
@@ -405,6 +483,11 @@ function extractCleanText(html) {
 
     text = text.replace(/\\\(/g, '');
     text = text.replace(/\\\)/g, '');
+
+    // Декодируем математические символы
+    text = text.replace(/\\geq/g, '≥');
+    text = text.replace(/\\leq/g, '≤');
+    text = text.replace(/\\neq/g, '≠');
 
     // Удаляем все теги <...> (даже если они незакрыты)
     for (let i = 0; i < 3; i++) {

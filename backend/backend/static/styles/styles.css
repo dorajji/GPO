@@ -123,21 +123,33 @@ body {
   text-align: center;
   color: #3B388D;
 }
-.home__find-input {
+.home__find-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   margin-top: 70px;
-  -webkit-box-flex: 1;
-      -ms-flex-positive: 1;
-          flex-grow: 1;
-  height: 50px;
-  width: 680px;
+}
+.home__find-input,
+.home__find-button {
+  height: 55px;
+  box-sizing: border-box;
+  margin-top: 0;
+}
+.home__find-input {
+  height: 55px;
   border-width: 3px;
   border-color: #3B388D;
   border-radius: 10px;
   border-style: solid;
+  font-size: 14px;
+  flex: 1;
+  width: 500px;
+  min-width: 300px;
+  max-width: 800px;
 }
 .home__find-button {
   width: 112px;
-  height: 55px;
   border-color: #3B388D;
   border-radius: 5px;
   border-style: solid;
@@ -145,6 +157,10 @@ body {
   color: white;
   font-family: 'Lora', 'Regular', sans-serif;
   font-size: 15px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .home__find-button :active {
   background-color: #2e2c74;
@@ -166,10 +182,16 @@ body {
   font-family: 'Lora', 'Regular', sans-serif;
   font-size: 15px;
   color: #3B388D;
+  gap: 30px;
+}
+.home__find-href-content {
+  margin: 0 10px;
 }
 .home__desc {
   width: 470px;
   margin-top: 35px;
+  margin-bottom: 30px;
+  line-height: 1.25;
   font-family: 'Lora', 'Regular', sans-serif;
   font-size: 17px;
   font-weight: 500;
@@ -620,7 +642,7 @@ th {
   .home__find-button {
     -ms-flex-item-align: center;
         align-self: center;
-    margin-top: 15px;
+    margin-top: 0;
   }
   .main__header-logo {
     font-size: 20px;
@@ -692,4 +714,18 @@ th {
   .func-block__right-name {
     font-size: 13px;
   }
+}
+.search-result__link-block {
+  display: block;
+  margin-bottom: 5px;
+}
+.search-result__link {
+  display: inline;
+  font-weight: bold;
+  color: #0066cc;
+  text-decoration: none;
+  transition: text-decoration 0.2s;
+}
+.search-result__link:hover {
+  text-decoration: underline;
 }
