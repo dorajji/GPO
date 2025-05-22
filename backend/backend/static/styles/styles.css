@@ -756,3 +756,9 @@ th {
   width: 100%;
   max-width: 100%;
 }
+
+.home__img {
+  width: 290px;
+  height: 190px;
+  object-fit: contain;
+}
