@@ -51,11 +51,11 @@ async function executeSearchQuery() {
             }
         }
         
-        // Если запрос выглядит как потенциальный частичный OEIS ID ИЛИ
-        // если запрос был в строгом OEIS формате, но не дал точного совпадения:
+        // Если запрос выглядит как потенциальный частичный OEIS ID ИЛИ (был в строгом OEIS формате, но не дал точного совпадения):
+        // Выполняем поиск последовательностей.
         if (isPotentialPartialOEIS || (isOEIS && (!lookupResults || lookupResults.length !== 1))) {
              try {
-                // Используем общий поиск для частичных совпадений OEIS ID или для OEIS ID без точного совпадения
+                // Используем search_seq для поиска последовательностей по ID/части ID
                 const response = await fetch(`/search_seq?query=${encodeURIComponent(query)}`);
                 if (!response.ok) {
                     throw new Error('Ошибка при выполнении запроса к серверу.');
@@ -63,12 +63,14 @@ async function executeSearchQuery() {
 
                 const searchResults = await response.json();
 
-                // Если найден ровно один результат, перенаправляем на страницу последовательности
-                if (searchResults && searchResults.length === 1) {
+                // Если найден ровно один результат И это поиск по строгому OEIS ID, перенаправляем
+                if (isOEIS && searchResults && searchResults.length === 1 && searchResults[0].OEIS_ID.toUpperCase() === searchQueryForLookup) {
                      window.location.href = `/main?find=${encodeURIComponent(searchResults[0].OEIS_ID)}`;
-                     return; // Важно выйти из функции после перенаправления
+                     return; // Выходим после перенаправления
                 } else if (searchResults && searchResults.length > 0) {
-                    // Если найдено несколько результатов, отображаем их без фрагментов текста
+                    // Если найдено несколько результатов или это поиск по части ID/нестрогому формату,
+                    // отображаем список результатов, фильтруя их, чтобы показать только OEIS ID и название.
+                    // displaySearchResults обработает флаг isOEISSearch для правильного отображения.
                     displaySearchResults(searchResults, query, true);
                 } else {
                     // Если результатов нет
@@ -242,18 +244,262 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
         return block;
     }
 
+    // Фильтруем результаты для блоков интерпретации и алгоритма
+    const interpretationResults = results.filter(result => {
+        const matchedInterpretation = result.matches.some(match => match.type === 'interpretation_name' || match.type === 'interpretation_description');
+        return matchedInterpretation;
+    });
+
+    const algorithmResults = results.filter(result => {
+        const matchedAlgorithm = result.matches.some(match => match.type === 'algorithm_name' || match.type === 'algorithm_description');
+        return matchedAlgorithm;
+    });
+
+    // Фильтруем результаты для блока последовательности (включаем только те, где есть совпадение в полях последовательности)
+     const sequenceResults = results.filter(result =>
+         result.matches.some(match => match.type === 'sequence_name' || match.type === 'sequence_description')
+     );
+
+
     // Добавляем блоки результатов в порядке: последовательность, интерпретация, алгоритм
-    const sequenceBlock = createResultsBlock('sequence', results);
+    const sequenceBlock = createResultsBlock('sequence', sequenceResults);
     if (sequenceBlock) resultsContainer.appendChild(sequenceBlock);
 
     // Добавляем блоки интерпретации и алгоритма только если это не поиск по OEIS ID
     if (!isOEISSearch) {
-        const interpBlock = createResultsBlock('interpretation', results);
-        if (interpBlock) resultsContainer.appendChild(interpBlock);
+        // Для блока интерпретации обрабатываем результаты иначе
+        if (interpretationResults.length > 0) {
+            const interpBlock = document.createElement('div');
+            interpBlock.className = 'search-results__block';
 
-        const algBlock = createResultsBlock('algorithm', results);
-        if (algBlock) resultsContainer.appendChild(algBlock);
-    }
+            const interpBlockHeader = document.createElement('h4');
+            interpBlockHeader.className = 'search-results__block-header';
+            interpBlockHeader.textContent = getBlockTitle('interpretation');
+            interpBlock.appendChild(interpBlockHeader);
+
+            const interpResultsList = document.createElement('ul');
+            interpResultsList.className = 'search-results__list';
+
+            // Создаем отдельный пункт списка для каждого совпадения в описании интерпретации
+            interpretationResults.forEach(result => {
+                const interpretationMatches = result.matches.filter(match =>
+                    match.type === 'interpretation_name' || match.type === 'interpretation_description'
+                );
+
+                // Группируем совпадения по названию интерпретации
+                const groupedMatches = interpretationMatches.reduce((acc, match) => {
+                    const interpretationName = result.interpretation_name || 'Без названия интерпретации'; // Получаем название интерпретации из результата верхнего уровня
+                    if (!acc[interpretationName]) {
+                        acc[interpretationName] = [];
+                    }
+                    acc[interpretationName].push(match);
+                    return acc;
+                }, {});
+
+                // Создаем пункт списка для каждой интерпретации с совпадениями
+                for (const interpretationName in groupedMatches) {
+                    const matchesInInterpretation = groupedMatches[interpretationName];
+
+                    const listItem = document.createElement('li');
+                    listItem.className = 'search-results__item';
+                    const resultContent = document.createElement('div');
+                    resultContent.className = 'search-result__content';
+
+                    const linkLine = document.createElement('div');
+                    linkLine.className = 'search-result__link-block';
+                    const link = document.createElement('a');
+                    link.href = `/main?find=${encodeURIComponent(result.OEIS_ID)}`;
+                    link.textContent = `${result.OEIS_ID}`;
+                    link.className = 'search-result__link';
+                    linkLine.appendChild(link);
+
+                    // Добавляем название интерпретации в скобках
+                    const extraInfoSpan = document.createElement('span');
+                    extraInfoSpan.className = 'search-result__extra-info';
+                    extraInfoSpan.textContent = ' (' + interpretationName + ')';
+                    linkLine.appendChild(extraInfoSpan);
+
+                    resultContent.appendChild(linkLine);
+
+                    // Показываем совпадения только если это не поиск по OEIS ID
+                    if (!isOEISSearch) {
+                         const matchesContainer = document.createElement('div');
+                         matchesContainer.className = 'search-result__matches';
+                         matchesInInterpretation.forEach(match => {
+                             const matchItem = document.createElement('div');
+                             matchItem.className = 'search-result__match';
+                             const matchType = document.createElement('span');
+                             matchType.className = 'search-result__match-type';
+                             matchType.textContent = getMatchTypeLabel(match.type);
+                             matchItem.appendChild(matchType);
+                             const matchText = document.createElement('span');
+                             matchText.className = 'search-result__match-text';
+                             let cleanText = extractCleanText(match.text);
+                             let snippet = cleanText;
+                             if (typeof searchQuery === 'string' && searchQuery.length > 0) {
+                                 snippet = extractContextSnippet(cleanText, searchQuery, 100);
+                             }
+                             matchText.textContent = snippet;
+                             matchItem.appendChild(matchText);
+                             matchesContainer.appendChild(matchItem);
+                         });
+                         resultContent.appendChild(matchesContainer);
+                     }
+
+                     listItem.appendChild(resultContent);
+                     interpResultsList.appendChild(listItem);
+                 }
+             });
+
+             interpBlock.appendChild(interpResultsList);
+             resultsContainer.appendChild(interpBlock);
+         }
+
+         // Для блока алгоритма обрабатываем результаты иначе
+         if (algorithmResults.length > 0) {
+             const algBlock = document.createElement('div');
+             algBlock.className = 'search-results__block';
+
+             const algBlockHeader = document.createElement('h4');
+             algBlockHeader.className = 'search-results__block-header';
+             algBlockHeader.textContent = getBlockTitle('algorithm');
+             algBlock.appendChild(algBlockHeader);
+
+             const algResultsList = document.createElement('ul');
+             algResultsList.className = 'search-results__list';
+
+             // Создаем отдельный пункт списка для каждого совпадения в описании алгоритма
+             algorithmResults.forEach(result => {
+                 // Создаем отдельный пункт списка для каждого релевантного совпадения в алгоритме
+                 const relevantAlgorithmMatches = result.matches.filter(match =>
+                     match.type === 'algorithm_name' || match.type === 'algorithm_description'
+                 );
+
+                 // Группируем совпадения по типу (имя/описание) для данного результата
+                 const nameMatches = relevantAlgorithmMatches.filter(match => match.type === 'algorithm_name');
+                 const descriptionMatches = relevantAlgorithmMatches.filter(match => match.type === 'algorithm_description');
+
+                 // Если есть совпадения в описании, обрабатываем их как детальные результаты
+                 if (descriptionMatches.length > 0) {
+                     descriptionMatches.forEach(match => {
+                         const listItem = document.createElement('li');
+                         listItem.className = 'search-results__item';
+                         const resultContent = document.createElement('div');
+                         resultContent.className = 'search-result__content';
+
+                         const linkLine = document.createElement('div');
+                         linkLine.className = 'search-result__link-block';
+                         const link = document.createElement('a');
+                         link.href = `/main?find=${encodeURIComponent(result.OEIS_ID)}`;
+                         link.textContent = `${result.OEIS_ID}`;
+                         link.className = 'search-result__link';
+                         linkLine.appendChild(link);
+
+                         // Добавляем название алгоритма в скобках
+                         const extraInfoSpan = document.createElement('span');
+                         extraInfoSpan.className = 'search-result__extra-info';
+                         const algorithmName = nameMatches.length > 0 ? nameMatches[0].text : result.algorithm_name || 'Без названия алгоритма';
+                         extraInfoSpan.textContent = ' (' + algorithmName + ')';
+                         linkLine.appendChild(extraInfoSpan);
+
+                         resultContent.appendChild(linkLine);
+
+                         // Показываем совпадения только если это не поиск по OEIS ID
+                         if (!isOEISSearch) {
+                             const matchesContainer = document.createElement('div');
+                             matchesContainer.className = 'search-result__matches';
+
+                             // Добавляем текущее совпадение в описании
+                             const matchItem = document.createElement('div');
+                             matchItem.className = 'search-result__match';
+                             const matchType = document.createElement('span');
+                             matchType.className = 'search-result__match-type';
+                             matchType.textContent = getMatchTypeLabel(match.type);
+                             matchItem.appendChild(matchType);
+                             const matchText = document.createElement('span');
+                             matchText.className = 'search-result__match-text';
+                             let cleanText = extractCleanText(match.text);
+                             let snippet = cleanText;
+                             if (typeof searchQuery === 'string' && searchQuery.length > 0) {
+                                 snippet = extractContextSnippet(cleanText, searchQuery, 100);
+                             }
+                             matchText.textContent = snippet;
+                             matchItem.appendChild(matchText);
+                             matchesContainer.appendChild(matchItem);
+
+                             resultContent.appendChild(matchesContainer);
+                         }
+
+                         listItem.appendChild(resultContent);
+                         algResultsList.appendChild(listItem);
+                     });
+                 } else if (nameMatches.length > 0) { // Если нет совпадений в описании, но есть в названии
+                     // Создаем один пункт списка без детального блока совпадений
+                     const listItem = document.createElement('li');
+                     listItem.className = 'search-results__item';
+                     const resultContent = document.createElement('div');
+                     resultContent.className = 'search-result__content';
+
+                     const linkLine = document.createElement('div');
+                     linkLine.className = 'search-result__link-block';
+                     const link = document.createElement('a');
+                     link.href = `/main?find=${encodeURIComponent(result.OEIS_ID)}`;
+                     link.textContent = `${result.OEIS_ID}`;
+                     link.className = 'search-result__link';
+                     linkLine.appendChild(link);
+
+                     // Добавляем название алгоритма в скобках
+                     const extraInfoSpan = document.createElement('span');
+                     extraInfoSpan.className = 'search-result__extra-info';
+                     const algorithmName = nameMatches[0].text || result.algorithm_name || 'Без названия алгоритма';
+                     extraInfoSpan.textContent = ' (' + algorithmName + ')';
+                     linkLine.appendChild(extraInfoSpan);
+
+                     resultContent.appendChild(linkLine);
+
+                     // В этом случае не добавляем блок с детальным совпадением
+
+                     listItem.appendChild(resultContent);
+                     algResultsList.appendChild(listItem);
+                 }
+             });
+
+             algBlock.appendChild(algResultsList);
+             resultsContainer.appendChild(algBlock);
+         }
+
+     } else {
+         // Если это поиск по OEIS ID (не точное совпадение), отображаем только список OEIS ID
+         const oeisResultsList = document.createElement('ul');
+         oeisResultsList.className = 'search-results__list';
+         results.forEach(result => {
+             const listItem = document.createElement('li');
+             listItem.className = 'search-results__item';
+             const resultContent = document.createElement('div');
+             resultContent.className = 'search-result__content';
+
+             const linkLine = document.createElement('div');
+             linkLine.className = 'search-result__link-block';
+             const link = document.createElement('a');
+             link.href = `/main?find=${encodeURIComponent(result.OEIS_ID)}`;
+             link.textContent = `${result.OEIS_ID}`;
+             link.className = 'search-result__link';
+             linkLine.appendChild(link);
+
+             // Добавляем название последовательности в скобках, если есть
+              if (result.sequence_name) {
+                  const nameSpan = document.createElement('span');
+                  nameSpan.className = 'search-result__sequence-name';
+                  nameSpan.textContent = ': ' + result.sequence_name;
+                  linkLine.appendChild(nameSpan);
+              }
+
+             resultContent.appendChild(linkLine);
+             listItem.appendChild(resultContent);
+             oeisResultsList.appendChild(listItem); // Добавляем в новый список
+         });
+         resultsContainer.appendChild(oeisResultsList); // Добавляем список в контейнер
+     }
     
     // Удаляем предыдущие результаты поиска, если они есть
     const resultsRoot = document.getElementById('search-results-container');
@@ -446,6 +692,7 @@ function noResults() {
     
     const suggestionsList = document.createElement('ul');
     suggestionsList.className = 'search-results__suggestions';
+    suggestionsList.style.listStyle = 'none';
     
     const suggestions = [
         'OEIS ID (например, A000045)',
