@@ -4,17 +4,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadSequenceList();
   await loadLastUpdate();
   
-  // Extract OEIS ID and interpretation from URL
+  // Extract OEIS ID, interpretation and algorithm from URL
   const urlParams = new URLSearchParams(window.location.search);
   const oeisId = urlParams.get('find');
   const interpretationName = urlParams.get('interp');
+  const algName = urlParams.get('alg');
   
   if (oeisId) {
+      // Загружаем последовательность и список интерпретаций
       await loadSequence(oeisId);
       await loadInterpretations(oeisId);
       
-      // Если указана интерпретация, выбираем её в селекторе
       if (interpretationName) {
+          // Если указана интерпретация, выбираем её в селекторе
           const selector = document.querySelector('.main__header-select');
           for (let i = 0; i < selector.options.length; i++) {
               if (selector.options[i].text === interpretationName) {
@@ -22,10 +24,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                   break;
               }
           }
-          await loadInterpretationsDetails();
+          // Загружаем детали интерпретации и ждем загрузки
+          await loadInterpretationsDetails(false); // Передаем false, чтобы предотвратить обновление URL
+          
+          // Если указан алгоритм, дожидаемся загрузки алгоритмов и выбираем нужный
+          if (algName) {
+              await loadAlgorithmsByInterpretation(false); // Передаем false, чтобы предотвратить обновление URL
+              const selectorAlg = document.querySelector('.func-block__left-select');
+              for (let i = 0; i < selectorAlg.options.length; i++) {
+                  if (selectorAlg.options[i].text === algName) {
+                      selectorAlg.selectedIndex = i;
+                      break;
+                  }
+              }
+              await loadAlgorithmDetails(false); // Передаем false, чтобы предотвратить обновление URL
+          } else {
+              await loadAlgorithmsByInterpretation();
+          }
+      } else {
+          await loadAlgorithmsByInterpretation();
       }
-      
-      await loadAlgorithmsByInterpretation();
   }
 
   // Set up event listeners
@@ -141,7 +159,7 @@ async function loadSequence(oeisId) {
 }
 
 // Load interpretation details for the selected interpretation
-async function loadInterpretationsDetails() {
+async function loadInterpretationsDetails(updateUrl = true) {
   const selector = document.querySelector('.main__header-select');
   const interpretationName = selector.options[selector.selectedIndex]?.text;
   const oeisId = document.querySelector('.main__header-id')?.textContent.trim();
@@ -163,11 +181,18 @@ async function loadInterpretationsDetails() {
           await MathJax.typesetPromise([infoWrapper]);
           
           // Загружаем алгоритмы для выбранной интерпретации
-          await loadAlgorithmsByInterpretation();
+          await loadAlgorithmsByInterpretation(updateUrl);
           
-          // Обновляем URL без перезагрузки страницы
-          const newUrl = `/main?find=${oeisId}&interp=${encodeURIComponent(interpretationName)}`;
-          window.history.pushState({}, '', newUrl);
+          // Обновляем URL без перезагрузки страницы только если updateUrl = true
+          if (updateUrl) {
+              const urlParams = new URLSearchParams(window.location.search);
+              const algName = urlParams.get('alg');
+              let newUrl = `/main?find=${oeisId}&interp=${encodeURIComponent(interpretationName)}`;
+              if (algName) {
+                  newUrl += `&alg=${encodeURIComponent(algName)}`;
+              }
+              window.history.pushState({}, '', newUrl);
+          }
       } else {
           console.error('Error loading interpretation details.');
       }
@@ -177,7 +202,7 @@ async function loadInterpretationsDetails() {
 }
 
 // Load algorithms for a given interpretation ID
-async function loadAlgorithmsByInterpretation() {
+async function loadAlgorithmsByInterpretation(updateUrl = true) {
   const interpId = document.querySelector('.for_interp_id')?.textContent.trim();
   if (!interpId) return;
   try {
@@ -212,7 +237,7 @@ async function loadAlgorithmsByInterpretation() {
           }
           
           // Загружаем детали выбранного алгоритма
-          await loadAlgorithmDetails();
+          await loadAlgorithmDetails(updateUrl);
       } else {
           console.error('Error loading algorithms.');
       }
@@ -222,7 +247,7 @@ async function loadAlgorithmsByInterpretation() {
 }
 
 // Load details for the selected algorithm
-async function loadAlgorithmDetails() {
+async function loadAlgorithmDetails(updateUrl = true) {
   const selector = document.querySelector('.func-block__left-select');
   const algName = selector.options[selector.selectedIndex]?.text;
   if (!algName) return;
@@ -281,17 +306,19 @@ async function loadAlgorithmDetails() {
 
           funcWrapper.insertBefore(paramsWrapper, funcWrapper.firstChild);
           
-          // Обновляем URL без перезагрузки страницы
-          const urlParams = new URLSearchParams(window.location.search);
-          const oeisId = urlParams.get('find');
-          const interpretationName = urlParams.get('interp');
-          
-          let newUrl = `/main?find=${oeisId}`;
-          if (interpretationName) {
-              newUrl += `&interp=${encodeURIComponent(interpretationName)}`;
+          // Обновляем URL без перезагрузки страницы только если updateUrl = true
+          if (updateUrl) {
+              const urlParams = new URLSearchParams(window.location.search);
+              const oeisId = urlParams.get('find');
+              const interpretationName = urlParams.get('interp');
+              
+              let newUrl = `/main?find=${oeisId}`;
+              if (interpretationName) {
+                  newUrl += `&interp=${encodeURIComponent(interpretationName)}`;
+              }
+              newUrl += `&alg=${encodeURIComponent(algName)}`;
+              window.history.pushState({}, '', newUrl);
           }
-          newUrl += `&alg=${encodeURIComponent(algName)}`;
-          window.history.pushState({}, '', newUrl);
       } else {
           console.error('Error loading algorithm details.');
       }

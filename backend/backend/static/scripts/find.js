@@ -409,7 +409,9 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
                      const linkLine = document.createElement('div');
                      linkLine.className = 'search-result__link-block';
                      const link = document.createElement('a');
-                     link.href = `/main?find=${encodeURIComponent(result.OEIS_ID)}&alg=${encodeURIComponent(algorithmName)}`;
+                     // Добавляем интерпретацию и алгоритм в URL
+                     const interpretationName = result.interpretation_name || '';
+                     link.href = `/main?find=${encodeURIComponent(result.OEIS_ID)}${interpretationName ? '&interp=' + encodeURIComponent(interpretationName) : ''}&alg=${encodeURIComponent(algorithmName)}`;
                      link.textContent = `${result.OEIS_ID}`;
                      link.className = 'search-result__link';
                      linkLine.appendChild(link);

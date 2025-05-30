@@ -238,6 +238,7 @@ def search_SeqSelect(request):
         
         for seq_record in sequence_records:
             sequence = seq_record.M_ID  # Получаем связанную последовательность
+            interp = seq_record.Interp_ID  # Получаем связанную интерпретацию
             
             # Создаем ключ для проверки уникальности
             combination_key = (sequence.OEIS_ID, 'algorithm', alg.Alg_ID)
@@ -250,6 +251,7 @@ def search_SeqSelect(request):
                 'OEIS_ID': sequence.OEIS_ID,
                 'sequence_name': sequence.sequence_name,
                 'algorithm_name': alg.alg_name,
+                'interpretation_name': interp.interpretation_name,  # Добавляем название интерпретации
                 'matches': []
             }
 
