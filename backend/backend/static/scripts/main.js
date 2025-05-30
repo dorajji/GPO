@@ -48,13 +48,6 @@ async function loadLastUpdate(){
                 footerText.textContent = "Не удалось получить время обновления.";
             }
         })
-//     const lastUpdateDate = new Date().toLocaleDateString('ru-RU', {
-//         year: 'numeric',
-//         month: 'long',
-//         day: 'numeric',
-//     }
-// ); 
-    
 }
 
 // Load the sequence list on the home page

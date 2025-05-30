@@ -288,7 +288,14 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
 
                 // Группируем совпадения по названию интерпретации
                 const groupedMatches = interpretationMatches.reduce((acc, match) => {
-                    const interpretationName = result.interpretation_name || 'Без названия интерпретации'; // Получаем название интерпретации из результата верхнего уровня
+                    // Используем название интерпретации из результата
+                    const interpretationName = result.interpretation_name;
+                    
+                    if (!interpretationName) {
+                        console.error('Missing interpretation name for result:', result);
+                        return acc;
+                    }
+
                     if (!acc[interpretationName]) {
                         acc[interpretationName] = [];
                     }
@@ -308,12 +315,12 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
                     const linkLine = document.createElement('div');
                     linkLine.className = 'search-result__link-block';
                     const link = document.createElement('a');
-                    link.href = `/main?find=${encodeURIComponent(result.OEIS_ID)}`;
+                    link.href = `/main?find=${encodeURIComponent(result.OEIS_ID)}&interp=${encodeURIComponent(interpretationName)}`;
                     link.textContent = `${result.OEIS_ID}`;
                     link.className = 'search-result__link';
                     linkLine.appendChild(link);
 
-                    // Добавляем название интерпретации в скобках
+                    // Добавляем название интерпретации
                     const extraInfoSpan = document.createElement('span');
                     extraInfoSpan.className = 'search-result__extra-info';
                     extraInfoSpan.textContent = ' (' + interpretationName + ')';
@@ -370,46 +377,56 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
 
              // Создаем отдельный пункт списка для каждого совпадения в описании алгоритма
              algorithmResults.forEach(result => {
-                 // Создаем отдельный пункт списка для каждого релевантного совпадения в алгоритме
-                 const relevantAlgorithmMatches = result.matches.filter(match =>
+                 const algorithmMatches = result.matches.filter(match =>
                      match.type === 'algorithm_name' || match.type === 'algorithm_description'
                  );
 
-                 // Группируем совпадения по типу (имя/описание) для данного результата
-                 const nameMatches = relevantAlgorithmMatches.filter(match => match.type === 'algorithm_name');
-                 const descriptionMatches = relevantAlgorithmMatches.filter(match => match.type === 'algorithm_description');
+                 // Группируем совпадения по названию алгоритма
+                 const groupedMatches = algorithmMatches.reduce((acc, match) => {
+                     const algorithmName = result.algorithm_name;
+                     
+                     if (!algorithmName) {
+                         console.error('Missing algorithm name for result:', result);
+                         return acc;
+                     }
 
-                 // Если есть совпадения в описании, обрабатываем их как детальные результаты
-                 if (descriptionMatches.length > 0) {
-                     descriptionMatches.forEach(match => {
-                         const listItem = document.createElement('li');
-                         listItem.className = 'search-results__item';
-                         const resultContent = document.createElement('div');
-                         resultContent.className = 'search-result__content';
+                     if (!acc[algorithmName]) {
+                         acc[algorithmName] = [];
+                     }
+                     acc[algorithmName].push(match);
+                     return acc;
+                 }, {});
 
-                         const linkLine = document.createElement('div');
-                         linkLine.className = 'search-result__link-block';
-                         const link = document.createElement('a');
-                         link.href = `/main?find=${encodeURIComponent(result.OEIS_ID)}`;
-                         link.textContent = `${result.OEIS_ID}`;
-                         link.className = 'search-result__link';
-                         linkLine.appendChild(link);
+                 // Создаем пункт списка для каждого алгоритма с совпадениями
+                 for (const algorithmName in groupedMatches) {
+                     const matchesInAlgorithm = groupedMatches[algorithmName];
 
-                         // Добавляем название алгоритма в скобках
-                         const extraInfoSpan = document.createElement('span');
-                         extraInfoSpan.className = 'search-result__extra-info';
-                         const algorithmName = nameMatches.length > 0 ? nameMatches[0].text : result.algorithm_name || 'Без названия алгоритма';
-                         extraInfoSpan.textContent = ' (' + algorithmName + ')';
-                         linkLine.appendChild(extraInfoSpan);
+                     const listItem = document.createElement('li');
+                     listItem.className = 'search-results__item';
+                     const resultContent = document.createElement('div');
+                     resultContent.className = 'search-result__content';
 
-                         resultContent.appendChild(linkLine);
+                     const linkLine = document.createElement('div');
+                     linkLine.className = 'search-result__link-block';
+                     const link = document.createElement('a');
+                     link.href = `/main?find=${encodeURIComponent(result.OEIS_ID)}&alg=${encodeURIComponent(algorithmName)}`;
+                     link.textContent = `${result.OEIS_ID}`;
+                     link.className = 'search-result__link';
+                     linkLine.appendChild(link);
 
-                         // Показываем совпадения только если это не поиск по OEIS ID
-                         if (!isOEISSearch) {
-                             const matchesContainer = document.createElement('div');
-                             matchesContainer.className = 'search-result__matches';
+                     // Добавляем название алгоритма
+                     const extraInfoSpan = document.createElement('span');
+                     extraInfoSpan.className = 'search-result__extra-info';
+                     extraInfoSpan.textContent = ' (' + algorithmName + ')';
+                     linkLine.appendChild(extraInfoSpan);
 
-                             // Добавляем текущее совпадение в описании
+                     resultContent.appendChild(linkLine);
+
+                     // Показываем совпадения только если это не поиск по OEIS ID
+                     if (!isOEISSearch) {
+                         const matchesContainer = document.createElement('div');
+                         matchesContainer.className = 'search-result__matches';
+                         matchesInAlgorithm.forEach(match => {
                              const matchItem = document.createElement('div');
                              matchItem.className = 'search-result__match';
                              const matchType = document.createElement('span');
@@ -426,38 +443,9 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
                              matchText.textContent = snippet;
                              matchItem.appendChild(matchText);
                              matchesContainer.appendChild(matchItem);
-
-                             resultContent.appendChild(matchesContainer);
-                         }
-
-                         listItem.appendChild(resultContent);
-                         algResultsList.appendChild(listItem);
-                     });
-                 } else if (nameMatches.length > 0) { // Если нет совпадений в описании, но есть в названии
-                     // Создаем один пункт списка без детального блока совпадений
-                     const listItem = document.createElement('li');
-                     listItem.className = 'search-results__item';
-                     const resultContent = document.createElement('div');
-                     resultContent.className = 'search-result__content';
-
-                     const linkLine = document.createElement('div');
-                     linkLine.className = 'search-result__link-block';
-                     const link = document.createElement('a');
-                     link.href = `/main?find=${encodeURIComponent(result.OEIS_ID)}`;
-                     link.textContent = `${result.OEIS_ID}`;
-                     link.className = 'search-result__link';
-                     linkLine.appendChild(link);
-
-                     // Добавляем название алгоритма в скобках
-                     const extraInfoSpan = document.createElement('span');
-                     extraInfoSpan.className = 'search-result__extra-info';
-                     const algorithmName = nameMatches[0].text || result.algorithm_name || 'Без названия алгоритма';
-                     extraInfoSpan.textContent = ' (' + algorithmName + ')';
-                     linkLine.appendChild(extraInfoSpan);
-
-                     resultContent.appendChild(linkLine);
-
-                     // В этом случае не добавляем блок с детальным совпадением
+                         });
+                         resultContent.appendChild(matchesContainer);
+                     }
 
                      listItem.appendChild(resultContent);
                      algResultsList.appendChild(listItem);

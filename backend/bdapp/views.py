@@ -184,8 +184,8 @@ def search_SeqSelect(request):
                 sequence_tb__M_ID=seq.M_ID
             )
 
-            # Формируем результат
-            result = {
+            # Формируем базовый результат с совпадениями последовательности
+            base_result = {
                 'OEIS_ID': seq.OEIS_ID,
                 'sequence_name': seq.sequence_name,
                 'matches': []
@@ -193,7 +193,7 @@ def search_SeqSelect(request):
 
             # Проверяем совпадения в названии и описании последовательности
             if query.lower() in seq.sequence_name.lower():
-                result['matches'].append({
+                base_result['matches'].append({
                     'type': 'sequence_name',
                     'text': seq.sequence_name
                 })
@@ -211,18 +211,27 @@ def search_SeqSelect(request):
                         context = '...' + context
                     if context_end < len(description):
                         context = context + '...'
-                    result['matches'].append({
+                    base_result['matches'].append({
                         'type': 'sequence_description',
                         'text': context
                     })
 
+            # Создаем списки для хранения результатов с алгоритмами и интерпретациями
+            algorithm_results = []
+            interpretation_results = []
+
             # Проверяем совпадения в алгоритмах
             for alg in related_algs:
+                alg_matches = []
+                has_matches = False
+
                 if query.lower() in alg.alg_name.lower():
-                    result['matches'].append({
+                    alg_matches.append({
                         'type': 'algorithm_name',
                         'text': alg.alg_name
                     })
+                    has_matches = True
+
                 if query.lower() in alg.field_description.lower():
                     # Находим фрагмент текста с совпадением
                     description = alg.field_description.lower()
@@ -237,18 +246,32 @@ def search_SeqSelect(request):
                             context = '...' + context
                         if context_end < len(description):
                             context = context + '...'
-                        result['matches'].append({
+                        alg_matches.append({
                             'type': 'algorithm_description',
                             'text': context
                         })
+                        has_matches = True
+
+                if has_matches:
+                    # Создаем новый результат для этого алгоритма
+                    alg_result = base_result.copy()
+                    alg_result['matches'] = base_result['matches'].copy()
+                    alg_result['matches'].extend(alg_matches)
+                    alg_result['algorithm_name'] = alg.alg_name
+                    algorithm_results.append(alg_result)
 
             # Проверяем совпадения в интерпретациях
             for interp in related_interps:
+                interp_matches = []
+                has_matches = False
+
                 if query.lower() in interp.interpretation_name.lower():
-                    result['matches'].append({
+                    interp_matches.append({
                         'type': 'interpretation_name',
                         'text': interp.interpretation_name
                     })
+                    has_matches = True
+
                 if query.lower() in interp.interpretation_description.lower():
                     # Находим фрагмент текста с совпадением
                     description = interp.interpretation_description.lower()
@@ -263,16 +286,29 @@ def search_SeqSelect(request):
                             context = '...' + context
                         if context_end < len(description):
                             context = context + '...'
-                        result['matches'].append({
+                        interp_matches.append({
                             'type': 'interpretation_description',
                             'text': context
                         })
+                        has_matches = True
 
-            # Добавляем информацию об алгоритмах
-            if related_algs:
-                result['alg_name'] = ', '.join(alg.alg_name for alg in related_algs)
-            
-            results.append(result)
+                if has_matches:
+                    # Создаем новый результат для этой интерпретации
+                    interp_result = base_result.copy()
+                    interp_result['matches'] = base_result['matches'].copy()
+                    interp_result['matches'].extend(interp_matches)
+                    interp_result['interpretation_name'] = interp.interpretation_name
+                    interpretation_results.append(interp_result)
+
+            # Добавляем результаты в общий список
+            if interpretation_results:
+                results.extend(interpretation_results)
+            if algorithm_results:
+                results.extend(algorithm_results)
+            # Если нет совпадений в интерпретациях и алгоритмах, но есть базовые совпадения
+            elif base_result['matches']:
+                results.append(base_result)
+
             seen_ids.add(seq.M_ID)
 
     return JsonResponse(results, safe=False)
