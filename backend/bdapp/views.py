@@ -116,20 +116,30 @@ def search_SeqSelect(request):
         sequences = sequence_desc.objects.filter(
             Q(OEIS_ID__iexact=normalized_query)
         )
-        
-        # Если не нашли по точному совпадению, пробуем поиск по частичному совпадению
-        if not sequences.exists():
-            # Удаляем ведущие нули для частичного поиска
-            clean_query = normalized_query.lstrip('0')
-            if clean_query != normalized_query:
-                sequences = sequence_desc.objects.filter(
-                    Q(OEIS_ID__iexact=normalized_query) |
-                    Q(OEIS_ID__istartswith=clean_query)
-                )
-            else:
-                sequences = sequence_desc.objects.filter(
-                    Q(OEIS_ID__istartswith=normalized_query)
-                )
+
+        # Если найдено точное совпадение и это был OEIS ID запрос, сразу возвращаем результат
+        if is_oeis_id and sequences.exists():
+            results = []
+            for seq in sequences:
+                result_item = {
+                    'OEIS_ID': seq.OEIS_ID,
+                    'sequence_name': seq.sequence_name,
+                    'matches': [] # В этом случае совпадения не отображаются под ссылкой
+                }
+
+                results.append(result_item)
+
+            return JsonResponse(results, safe=False)
+
+        # Если не нашли по точному совпадению ИЛИ это не был OEIS ID запрос, продолжаем поиск
+        if not sequences.exists() or not is_oeis_id:
+            # Вместо startswith используем icontains для поиска подстроки в OEIS_ID (только если это был OEIS ID запрос)
+            if is_oeis_id:
+                 sequences = sequence_desc.objects.filter(
+                     Q(OEIS_ID__icontains=normalized_query)
+                 )
+            # Если это не был OEIS ID запрос, sequences уже содержит результаты поиска по имени/описанию
+
     else:
         # Если это не OEIS ID, ищем по другим полям
         sequences = sequence_desc.objects.filter(
@@ -303,8 +313,29 @@ def search_SeqSelect(request):
 
             results.append(result)
 
+    # Добавляем последовательности, найденные по OEIS ID, в результирующий список
+    # Создаем временный список для результатов OEIS ID
+    oeis_id_results = []
+    for seq in sequences:
+         oeis_id_results.append({
+             'OEIS_ID': seq.OEIS_ID,
+             'sequence_name': seq.sequence_name,
+             'matches': [] # Совпадения будут добавлены позже, если они есть в других полях
+         })
+
+    # Очищаем 'sequences', чтобы не обрабатывать их повторно как запасной вариант
+    sequences = []
+
+    # Теперь добавляем результаты из поиска OEIS ID в общий список results
+    # Убедимся, что не добавляем дубликаты, если они уже были найдены через интерпретации/алгоритмы
+    for oeis_result in oeis_id_results:
+        is_duplicate = any(res['OEIS_ID'] == oeis_result['OEIS_ID'] for res in results)
+        if not is_duplicate:
+            results.append(oeis_result)
+
     # Поиск по последовательностям (если нет результатов в интерпретациях и алгоритмах)
-    if not results:
+    # Этот блок теперь будет обрабатывать только случаи, когда поиск не был по OEIS ID и не нашел ничего в интерпретациях/алгоритмах
+    if not results and not is_oeis_id:
         sequences = sequence_desc.objects.filter(
             Q(sequence_name__icontains=query) |
             Q(sequence_description__icontains=query)

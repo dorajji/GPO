@@ -16,91 +16,30 @@ async function executeSearchQuery() {
             window.location.href = url;
             return;
         }
-        
-        // Если запрос выглядит как полный OEIS ID (строгий формат)
-        if (isOEIS) {
-            try {
-                // Попытка найти точное совпадение OEIS ID через search_SeqSelect
-                let searchQueryForLookup = query.toUpperCase();
-                if (!searchQueryForLookup.startsWith('A') && !searchQueryForLookup.startsWith('B')) {
-                    searchQueryForLookup = 'A' + searchQueryForLookup;
-                }
-                const lookupResponse = await fetch(`/search_SeqSelect?query=${encodeURIComponent(searchQueryForLookup)}`);
 
-                if (!lookupResponse.ok) {
-                     throw new Error('Ошибка при выполнении запроса к эндпоинту search_SeqSelect.');
-                }
-
-                const lookupResults = await lookupResponse.json();
-
-                // Если найдено ровно одно совпадение, считаем это точным совпадением OEIS ID
-                if (lookupResults && lookupResults.length === 1) {
-                     // Перенаправляем на страницу конкретной последовательности
-                     window.location.href = `/main?find=${encodeURIComponent(lookupResults[0].OEIS_ID)}`;
-                     return;
-                } else {
-                    // Если не найдено точное совпадение, но запрос был в строгом OEIS формате,
-                    // переходим к общему поиску без фрагментов текста.
-                    // Выполняется ниже после этого блока if(isOEIS).
-                     console.log(`Не найдено точное совпадение для OEIS ID: ${query}. Выполнение общего поиска.`);
-                }
-
-            } catch (error) {
-                 console.error('Произошла ошибка при поиске точного OEIS ID:', error);
-                 // В случае ошибки при поиске точного ID, также переходим к общему поиску.
-            }
-        }
-        
-        // Если запрос выглядит как потенциальный частичный OEIS ID ИЛИ (был в строгом OEIS формате, но не дал точного совпадения):
-        // Выполняем поиск последовательностей.
-        if (isPotentialPartialOEIS || (isOEIS && (!lookupResults || lookupResults.length !== 1))) {
-             try {
-                // Используем search_seq для поиска последовательностей по ID/части ID
-                const response = await fetch(`/search_seq?query=${encodeURIComponent(query)}`);
-                if (!response.ok) {
-                    throw new Error('Ошибка при выполнении запроса к серверу.');
-                }
-
-                const searchResults = await response.json();
-
-                // Если найден ровно один результат И это поиск по строгому OEIS ID, перенаправляем
-                if (isOEIS && searchResults && searchResults.length === 1 && searchResults[0].OEIS_ID.toUpperCase() === searchQueryForLookup) {
-                     window.location.href = `/main?find=${encodeURIComponent(searchResults[0].OEIS_ID)}`;
-                     return; // Выходим после перенаправления
-                } else if (searchResults && searchResults.length > 0) {
-                    // Если найдено несколько результатов или это поиск по части ID/нестрогому формату,
-                    // отображаем список результатов, фильтруя их, чтобы показать только OEIS ID и название.
-                    // displaySearchResults обработает флаг isOEISSearch для правильного отображения.
-                    displaySearchResults(searchResults, query, true);
-                } else {
-                    // Если результатов нет
-                    noResults();
-                }
-            } catch (error) {
-                console.error('Произошла ошибка при выполнении общего поиска:', error);
-                noResults();
-            }
-            return; // Важно выйти из функции после обработки этого случая
-        }
-
-        // Обычный текстовый поиск (если не подошел ни один из вышеуказанных случаев)
+        // Выполняем общий поиск или поиск по частичному ID с помощью эндпоинта /search_seq
         try {
+            // Используем search_seq для поиска последовательностей по ID/части ID/тексту
             const response = await fetch(`/search_seq?query=${encodeURIComponent(query)}`);
             if (!response.ok) {
                 throw new Error('Ошибка при выполнении запроса к серверу.');
             }
-            
+
             const searchResults = await response.json();
-            
+
             if (searchResults && searchResults.length > 0) {
-                displaySearchResults(searchResults, query); // Обычный поиск, фрагменты текста будут показаны
+                // Определяем, нужно ли отображать только OEIS ID (если запрос был строгим OEIS ID)
+                const displayOnlyOEIS = isOEIS;
+                displaySearchResults(searchResults, query, displayOnlyOEIS);
             } else {
+                // Если результатов нет
                 noResults();
             }
         } catch (error) {
-            console.error('Произошла ошибка:', error);
+            console.error('Произошла ошибка при выполнении поиска:', error);
             noResults();
         }
+
     } else {
         // Создаем контейнер для сообщения об ошибке
         const resultsContainer = document.createElement('div');
@@ -168,32 +107,24 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
             link.className = 'search-result__link';
             linkLine.appendChild(link);
 
-            // Определяем основное название: всегда пытаемся взять название алгоритма
-            let mainNameText = '';
-            if (result.algorithm_name) {
-                mainNameText = result.algorithm_name;
-            } else if (result.sequence_name) { // Если алгоритма нет, можно показать название последовательности как запасной вариант?
-                 mainNameText = result.sequence_name;
-            }
-
-            if (mainNameText) {
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'search-result__sequence-name';
-                nameSpan.textContent = ': ' + mainNameText;
-                linkLine.appendChild(nameSpan);
-            }
-
-            // Добавляем название интерпретации и/или алгоритма в скобках на основе типов совпадений в result.matches
+            // Добавляем название последовательности, интерпретации и/или алгоритма в скобках на основе типов совпадений в result.matches и доступных названий
             const matchedTypesInResult = result.matches.map(match => match.type);
             let extraInfo = [];
 
-            // Добавляем название интерпретации только если совпадение было в поле интерпретации для этого результата
-            if (matchedTypesInResult.some(type => type === 'interpretation_name' || type === 'interpretation_description') && result.interpretation_name) {
+            // Добавляем название последовательности если оно есть
+            if (result.sequence_name) {
+                extraInfo.push(result.sequence_name);
+            }
+
+            // Добавляем название интерпретации только если совпадение было в поле интерпретации для этого результата И название интерпретации есть
+            // Исключаем его, если это блок "sequence"
+            if (type !== 'sequence' && (matchedTypesInResult.some(type => type === 'interpretation_name' || type === 'interpretation_description')) && result.interpretation_name) {
                 extraInfo.push(result.interpretation_name);
             }
 
-            // Добавляем название алгоритма только если совпадение было в поле алгоритма для этого результата
-            if (matchedTypesInResult.some(type => type === 'algorithm_name' || type === 'algorithm_description') && result.algorithm_name) {
+            // Добавляем название алгоритма только если совпадение было в поле алгоритма для этого результата И название алгоритма есть
+            // Исключаем его, если это блок "sequence"
+            if (type !== 'sequence' && (matchedTypesInResult.some(type => type === 'algorithm_name' || type === 'algorithm_description')) && result.algorithm_name) {
                  extraInfo.push(result.algorithm_name);
             }
 
@@ -208,7 +139,7 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
             
             // Показываем совпадения только если это не поиск по OEIS ID
             if (!isOEISSearch) {
-                const relevantMatches = result.matches.filter(match => 
+                const relevantMatches = result.matches.filter(match =>
                     (type === 'sequence' && (match.type === 'sequence_name' || match.type === 'sequence_description')) ||
                     (type === 'interpretation' && (match.type === 'interpretation_name' || match.type === 'interpretation_description')) ||
                     (type === 'algorithm' && (match.type === 'algorithm_name' || match.type === 'algorithm_description'))
@@ -217,12 +148,23 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
                     const matchesContainer = document.createElement('div');
                     matchesContainer.className = 'search-result__matches';
                     relevantMatches.forEach(match => {
+                        // Пропускаем совпадение, если это только название последовательности и мы не в режиме OEIS поиска (т.к. оно уже добавлено в скобках)
+                        if (type === 'sequence' && match.type === 'sequence_name' && !isOEISSearch) {
+                            return; // Пропускаем эту итерацию
+                        }
+
                         const matchItem = document.createElement('div');
                         matchItem.className = 'search-result__match';
                         const matchType = document.createElement('span');
                         matchType.className = 'search-result__match-type';
-                        matchType.textContent = getMatchTypeLabel(match.type);
-                        matchItem.appendChild(matchType);
+                        const matchLabel = getMatchTypeLabel(match.type);
+
+                        // Отображаем метку, если это не "Название: "
+                        if (match.type !== 'sequence_name') {
+                            matchType.textContent = matchLabel;
+                            matchItem.appendChild(matchType);
+                        }
+
                         const matchText = document.createElement('span');
                         matchText.className = 'search-result__match-text';
                         let cleanText = extractCleanText(match.text);
@@ -323,7 +265,16 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
                     // Добавляем название интерпретации
                     const extraInfoSpan = document.createElement('span');
                     extraInfoSpan.className = 'search-result__extra-info';
-                    extraInfoSpan.textContent = ' (' + interpretationName + ')';
+                    
+                    let extraInfo = [];
+                    // Добавляем название последовательности, если оно есть
+                    if (result.sequence_name) {
+                        extraInfo.push(result.sequence_name);
+                    }
+                    // Добавляем название интерпретации
+                    extraInfo.push(interpretationName);
+
+                    extraInfoSpan.textContent = ' (' + extraInfo.join(', ') + ')';
                     linkLine.appendChild(extraInfoSpan);
 
                     resultContent.appendChild(linkLine);
@@ -333,12 +284,23 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
                          const matchesContainer = document.createElement('div');
                          matchesContainer.className = 'search-result__matches';
                          matchesInInterpretation.forEach(match => {
+                             // Пропускаем совпадение, если это только название интерпретации (т.к. оно уже добавлено в скобках)
+                             if (match.type === 'interpretation_name') {
+                                 return; // Пропускаем эту итерацию
+                             }
+
                              const matchItem = document.createElement('div');
                              matchItem.className = 'search-result__match';
                              const matchType = document.createElement('span');
                              matchType.className = 'search-result__match-type';
-                             matchType.textContent = getMatchTypeLabel(match.type);
-                             matchItem.appendChild(matchType);
+                             const matchLabel = getMatchTypeLabel(match.type);
+
+                             // Отображаем метку, если это не "Название: "
+                             if (match.type !== 'sequence_name') {
+                                matchType.textContent = matchLabel;
+                                matchItem.appendChild(matchType);
+                             }
+
                              const matchText = document.createElement('span');
                              matchText.className = 'search-result__match-text';
                              let cleanText = extractCleanText(match.text);
@@ -419,7 +381,20 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
                      // Добавляем название алгоритма
                      const extraInfoSpan = document.createElement('span');
                      extraInfoSpan.className = 'search-result__extra-info';
-                     extraInfoSpan.textContent = ' (' + algorithmName + ')';
+                     
+                     let extraInfo = [];
+                     // Добавляем название последовательности, если оно есть
+                     if (result.sequence_name) {
+                         extraInfo.push(result.sequence_name);
+                     }
+                     // Добавляем название интерпретации, если оно есть
+                     if (result.interpretation_name) {
+                         extraInfo.push(result.interpretation_name);
+                     }
+                     // Добавляем название алгоритма
+                     extraInfo.push(algorithmName);
+
+                     extraInfoSpan.textContent = ' (' + extraInfo.join(', ') + ')';
                      linkLine.appendChild(extraInfoSpan);
 
                      resultContent.appendChild(linkLine);
@@ -429,12 +404,23 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
                          const matchesContainer = document.createElement('div');
                          matchesContainer.className = 'search-result__matches';
                          matchesInAlgorithm.forEach(match => {
+                             // Пропускаем совпадение, если это только название алгоритма (т.к. оно уже добавлено в скобках)
+                             if (match.type === 'algorithm_name') {
+                                 return; // Пропускаем эту итерацию
+                             }
+
                              const matchItem = document.createElement('div');
                              matchItem.className = 'search-result__match';
                              const matchType = document.createElement('span');
                              matchType.className = 'search-result__match-type';
-                             matchType.textContent = getMatchTypeLabel(match.type);
-                             matchItem.appendChild(matchType);
+                             const matchLabel = getMatchTypeLabel(match.type);
+
+                             // Отображаем метку, если это не "Название: "
+                             if (match.type !== 'sequence_name') {
+                                matchType.textContent = matchLabel;
+                                matchItem.appendChild(matchType);
+                             }
+
                              const matchText = document.createElement('span');
                              matchText.className = 'search-result__match-text';
                              let cleanText = extractCleanText(match.text);
@@ -477,12 +463,17 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
              linkLine.appendChild(link);
 
              // Добавляем название последовательности в скобках, если есть
-              if (result.sequence_name) {
-                  const nameSpan = document.createElement('span');
-                  nameSpan.className = 'search-result__sequence-name';
-                  nameSpan.textContent = ': ' + result.sequence_name;
-                  linkLine.appendChild(nameSpan);
-              }
+             let extraInfo = [];
+             if (result.sequence_name) {
+                 extraInfo.push(result.sequence_name);
+             }
+
+             if (extraInfo.length > 0) {
+                 const nameSpan = document.createElement('span');
+                 nameSpan.className = 'search-result__extra-info';
+                 nameSpan.textContent = ' (' + extraInfo.join(', ') + ')';
+                 linkLine.appendChild(nameSpan);
+             }
 
              resultContent.appendChild(linkLine);
              listItem.appendChild(resultContent);
