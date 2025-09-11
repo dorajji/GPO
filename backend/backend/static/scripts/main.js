@@ -1,3 +1,28 @@
+// Глобальная функция для поиска с главной страницы
+window.executeSearchQueryMain = function() {
+    console.log('executeSearchQueryMain called');
+    const searchInput = document.querySelector('.find__input');
+    if (!searchInput) {
+        console.error('Search input not found');
+        return;
+    }
+    const query = searchInput.value.trim();
+    console.log('Query:', query);
+    
+    if (query) {
+        // Сохраняем поисковый запрос в localStorage
+        localStorage.setItem('savedSearchQuery', query);
+        console.log('Query saved to localStorage:', query);
+        
+        // Перенаправляем на главную страницу
+        window.location.href = '/home';
+    } else {
+        console.log('Empty query, redirecting to home');
+        // Если запрос пустой, просто перенаправляем на главную
+        window.location.href = '/home';
+    }
+};
+
 // Initialize the document when DOM is fully loaded
 document.addEventListener('DOMContentLoaded', async () => {
   // Load the sequence list on the home page
@@ -70,11 +95,52 @@ async function loadLastUpdate(){
 
 // Load the sequence list on the home page
 async function loadSequenceList() {
+  // Проверяем, есть ли сохраненный поисковый запрос
+  const savedQuery = localStorage.getItem('savedSearchQuery');
+  console.log('loadSequenceList called, savedQuery:', savedQuery);
+  
+  if (savedQuery) {
+      console.log('Found saved query, executing search');
+      // Если есть сохраненный запрос, выполняем поиск
+      const searchInput = document.querySelector('.find__input');
+      if (searchInput) {
+          searchInput.value = savedQuery;
+          console.log('Input value set to:', savedQuery);
+          // Выполняем поиск
+          if (typeof window.executeSearchQuery === 'function') {
+              console.log('Calling executeSearchQuery');
+              await window.executeSearchQuery();
+          } else {
+              console.error('executeSearchQuery function not found');
+              // Попробуем вызвать функцию напрямую
+              if (typeof executeSearchQuery === 'function') {
+                  console.log('Calling executeSearchQuery directly');
+                  await executeSearchQuery();
+              } else {
+                  console.error('executeSearchQuery not available in any form');
+              }
+          }
+      } else {
+          console.log('Search input not found');
+      }
+      // Удаляем сохраненный запрос после использования
+      localStorage.removeItem('savedSearchQuery');
+      return;
+  }
+  
+  // Если нет сохраненного запроса, загружаем обычный список последовательностей
+  // Но только если мы на главной странице
+  const infoWrapper = document.querySelector('.home__find-href');
+  if (!infoWrapper) {
+      console.log('Not on home page, skipping sequence list loading');
+      return;
+  }
+  
   try {
       const response = await fetch('/search_seq');
       if (response.ok) {
           const sequenceData = await response.json();
-          const infoWrapper = document.querySelector('.home__find-href');
+          
           infoWrapper.innerHTML = '';
 
           sequenceData.slice(-4).forEach(seq => {

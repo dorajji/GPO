@@ -1,4 +1,4 @@
-async function executeSearchQuery() {
+window.executeSearchQuery = async function() {
     const query = document.querySelector('.find__input').value.trim();
 
     if (query) {
@@ -62,7 +62,7 @@ async function executeSearchQuery() {
         resultsRoot.innerHTML = '';
         resultsRoot.appendChild(resultsContainer);
     }
-}
+};
 
 function displaySearchResults(results, searchQuery, isOEISSearch = false) {
     // Скрываем блок с гиперссылками
@@ -525,28 +525,38 @@ style.textContent = `
         margin-right: auto;
     }
     
+    .main__header-selector {
+        display: flex;
+        align-items: center;
+    }
+
     .main__header-search-box {
         display: flex;
         align-items: center;
         gap: 10px;
     }
 
+    .main__header-select {
+        height: 50px;
+        border-radius: 8px;
+    }
+
     .main__header-search-input {
         flex: 1;
-        height: 40px;
+        height: 50px;
         padding: 0 15px;
         border: 2px solid #3B388D;
-        border-radius: 5px;
+        border-radius: 8px;
         font-size: 16px;
     }
 
     .main__header-search-button {
-        height: 40px;
+        height: 50px;
         padding: 0 20px;
         background-color: #3B388D;
         color: white;
         border: none;
-        border-radius: 5px;
+        border-radius: 8px;
         cursor: pointer;
         font-size: 16px;
         white-space: nowrap;

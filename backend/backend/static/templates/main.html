@@ -31,7 +31,7 @@
         <div class="main__header-name">
           <a href="#" class="main__header-name-href">❮ На главную</a>
           <a class="main__header-id"></a>
-          <div id="error-message" style="color: red; display: none;">Запрос не найден.</div> 
+          <div id="error-message" style="color: red; display: none;">Запрос не найден.</div>
         </div>
       </div>
 
@@ -43,7 +43,7 @@
 
       <div class="main__header-search-box">
         <input type="text" id="find" name="find" placeholder="Введите номер последовательности" class="main__header-search-input find__input"  >
-        <button class="main__header-search-button" onclick=executeSearchQuery()>Найти</button>
+        <button class="main__header-search-button" onclick="if(typeof executeSearchQueryMain === 'function') { executeSearchQueryMain(); } else { console.error('executeSearchQueryMain not found'); }">Найти</button>
       </div>
 
     </div>
@@ -90,7 +90,7 @@
     </div>
 
     <div class="func-block__right">
-      <div class="func-block__right-name"></div>
+      <div class="func-block__right-name">Описание алгоритма</div>
       <div class="func-block__right-desc" contenteditable></div>
     </div>
   </div>
@@ -103,8 +103,8 @@
   </div>
 </body>
 
-<script src="static\scripts\main.js"></script>
-<script src="static\scripts\find.js"></script>
+<script src="static\scripts\main.js?v=2"></script>
+<script src="static\scripts\find.js?v=2"></script>
 <script>
   MathJax = {
       chtml: {
@@ -117,5 +117,29 @@
 </script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
+<script>
+// Резервная функция для поиска
+if (typeof executeSearchQueryMain === 'undefined') {
+    window.executeSearchQueryMain = function() {
+        console.log('executeSearchQueryMain called (backup)');
+        const searchInput = document.querySelector('.find__input');
+        if (!searchInput) {
+            console.error('Search input not found');
+            return;
+        }
+        const query = searchInput.value.trim();
+        console.log('Query:', query);
+        
+        if (query) {
+            localStorage.setItem('savedSearchQuery', query);
+            console.log('Query saved to localStorage:', query);
+            window.location.href = '/home';
+        } else {
+            console.log('Empty query, redirecting to home');
+            window.location.href = '/home';
+        }
+    };
+}
+</script>
 
 </html>
