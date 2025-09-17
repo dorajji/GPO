@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 from . import views
 
 app_name = 'bdapp'
@@ -14,6 +14,9 @@ urlpatterns = [
     path('alg',views.alg_Select),
     path('algDetails',views.alg_SelectDetails),
     path('checkDate',views.check_date),
-     path('main', views.main_view, name='main')
+    path('main', views.main_view, name='main'),
+    path('404', views.not_found_view, name='not_found'),
+    # Catch-all for unknown paths to show branded 404 page even with DEBUG=True
+    re_path(r'^.*$', views.not_found_view),
 ]
     

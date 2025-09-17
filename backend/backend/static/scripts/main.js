@@ -74,6 +74,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Set up event listeners
   setupEventListeners();
 });
+// Нормализуем пути к статике внутри HTML, приходящего с сервера (DB)
+function normalizeStaticAssets(html) {
+  if (!html || typeof html !== 'string') return html;
+  let result = html;
+  // Приводим обратные слеши к прямым
+  result = result.replace(/\\/g, '/');
+  // Препендим /static/ для assets, если отсутствует начальный слеш
+  result = result.replace(/src\s*=\s*"\s*(?:\.?\/?)(assets\/[^"]*)"/gi, 'src="/static/$1"');
+  result = result.replace(/src\s*=\s*'\s*(?:\.?\/?)(assets\/'[^']*)'/gi, "src='/static/$1'");
+  // Препендим /static/ если начинается с static без первого слеша
+  result = result.replace(/src\s*=\s*"\s*static\//gi, 'src="/static/');
+  result = result.replace(/src\s*=\s*'\s*static\//gi, "src='/static/");
+  return result;
+}
+
+// Перенаправление на страницу 404
+function redirectTo404() {
+  try {
+    window.location.replace('/404');
+  } catch (e) {
+    window.location.href = '/404';
+  }
+}
 
 async function loadLastUpdate(){
     const footerText = document.querySelector('.footer__text');
@@ -162,8 +185,13 @@ async function loadSequenceList() {
 async function loadInterpretations(oeisId) {
   try {
       const response = await fetch(`/search_interp?oeis_id=${oeisId}`);
-      if (response.ok) {
-          const interpretations = await response.json();
+      if (!response.ok) {
+          return redirectTo404();
+      }
+      const interpretations = await response.json();
+      if (!Array.isArray(interpretations) || interpretations.length === 0) {
+          return redirectTo404();
+      }
           const selector = document.querySelector('.main__header-select');
           selector.innerHTML = '';
           const addedDescriptions = new Set();
@@ -190,6 +218,10 @@ async function loadInterpretations(oeisId) {
                       break;
                   }
               }
+              // Если не нашли указанную интерпретацию — 404
+              if (selector.selectedIndex === -1 || selector.options[selector.selectedIndex]?.text !== interpretationName) {
+                  return redirectTo404();
+              }
           } else if (selector.options.length > 0) {
               // Если параметра interp нет, выбираем первую интерпретацию
               selector.selectedIndex = 0;
@@ -197,9 +229,6 @@ async function loadInterpretations(oeisId) {
           
           // Загружаем детали выбранной интерпретации
           await loadInterpretationsDetails();
-      } else {
-          console.error('Error loading interpretations.');
-      }
   } catch (error) {
       console.error('Error occurred while loading interpretations:', error);
   }
@@ -209,16 +238,18 @@ async function loadInterpretations(oeisId) {
 async function loadSequence(oeisId) {
   try {
       const response = await fetch(`/search?oeis_id=${oeisId}`);
-      if (response.ok) {
-          const sequenceData = await response.json();
-          const infoWrapper = document.querySelector('.info__block1');
-          infoWrapper.innerHTML = `
+      if (!response.ok) {
+          return redirectTo404();
+      }
+      const sequenceData = await response.json();
+      if (!Array.isArray(sequenceData) || sequenceData.length === 0) {
+          return redirectTo404();
+      }
+      const infoWrapper = document.querySelector('.info__block1');
+      infoWrapper.innerHTML = `
               <div class="info__block1">${sequenceData[0].sequence_description}</div>
           `;
-          await MathJax.typesetPromise([infoWrapper]);
-      } else {
-          console.error('Error loading sequence.');
-      }
+      await MathJax.typesetPromise([infoWrapper]);
   } catch (error) {
       console.error('Error occurred while loading sequence:', error);
   }
@@ -273,8 +304,13 @@ async function loadAlgorithmsByInterpretation(updateUrl = true) {
   if (!interpId) return;
   try {
       const response = await fetch(`/alg?interp_id=${interpId}`);
-      if (response.ok) {
-          const algorithms = await response.json();
+      if (!response.ok) {
+          return redirectTo404();
+      }
+      const algorithms = await response.json();
+      if (!Array.isArray(algorithms) || algorithms.length === 0) {
+          return redirectTo404();
+      }
           const selector = document.querySelector('.func-block__left-select');
           selector.innerHTML = '';
 
@@ -297,6 +333,10 @@ async function loadAlgorithmsByInterpretation(updateUrl = true) {
                       break;
                   }
               }
+              // Если не нашли указанный алгоритм — 404
+              if (selector.selectedIndex === -1 || selector.options[selector.selectedIndex]?.text !== algName) {
+                  return redirectTo404();
+              }
           } else if (selector.options.length > 0) {
               // Если параметра alg нет, выбираем первый алгоритм
               selector.selectedIndex = 0;
@@ -304,9 +344,6 @@ async function loadAlgorithmsByInterpretation(updateUrl = true) {
           
           // Загружаем детали выбранного алгоритма
           await loadAlgorithmDetails(updateUrl);
-      } else {
-          console.error('Error loading algorithms.');
-      }
   } catch (error) {
       console.error('Error occurred while loading algorithms:', error);
   }
@@ -320,8 +357,13 @@ async function loadAlgorithmDetails(updateUrl = true) {
 
   try {
       const response = await fetch(`/algDetails?algName=${algName}`);
-      if (response.ok) {
-          const algData = await response.json();
+      if (!response.ok) {
+          return redirectTo404();
+      }
+      const algData = await response.json();
+      if (!Array.isArray(algData) || algData.length === 0) {
+          return redirectTo404();
+      }
           const infoWrapper = document.querySelector('.func-block__right');
           const paramsWrapper = document.querySelector('.func-block__left-param');
           const funcWrapper = document.querySelector('.func-block__left-functional');
@@ -331,9 +373,10 @@ async function loadAlgorithmDetails(updateUrl = true) {
           paramsWrapper.style.minHeight = paramsWrapper.offsetHeight + 'px';
           funcWrapper.style.minHeight = funcWrapper.offsetHeight + 'px';
 
+          const normalizedDesc = normalizeStaticAssets(algData[0].field_description);
           infoWrapper.innerHTML = `
               <div class="func-block__right-name">${algData[0].field_name}</div>
-              <div class="func-block__right-desc">${algData[0].field_description}</div>
+              <div class="func-block__right-desc">${normalizedDesc}</div>
           `;
           
           paramsWrapper.innerHTML = '';
@@ -385,9 +428,6 @@ async function loadAlgorithmDetails(updateUrl = true) {
               newUrl += `&alg=${encodeURIComponent(algName)}`;
               window.history.pushState({}, '', newUrl);
           }
-      } else {
-          console.error('Error loading algorithm details.');
-      }
   } catch (error) {
       console.error('Error occurred while loading algorithm details:', error);
   }

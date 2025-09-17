@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {% load static %}
+  <link rel="stylesheet" type="text/css" href="{% static 'styles\\styles.css'%}"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'assets\\favicon\\apple-touch-icon.png'%}"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'assets\\favicon\\favicon-32x32.png'%}"/>
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'assets\\favicon\\favicon-16x16.png'%}"/>
+  <link rel="manifest" href="{% static 'assets\\favicon\\site.webmanifest'%}"/>
+  <style>
+    html, body{height:100%;}
+    body{display:flex;flex-direction:column;min-height:100vh;margin:0;overflow:hidden;}
+    .page404-center{flex:1;display:flex;align-items:flex-start;justify-content:center;text-align:center;padding-top:24px;}
+    .main__header{display:flex;align-items:center;gap:15px;padding-left:16px;}
+    .main__header-logo{display:flex;align-items:center;}
+    .main__header-search-box{display:flex;align-items:center;gap:10px;flex:1;margin-left:24px;}
+    .main__header-search-input{flex:1;min-width:0;width:100%;max-width:100%;height:50px;padding:0 15px;border:2px solid #3B388D;border-radius:8px;font-size:16px;}
+    .main__header-search-button{height:50px;padding:0 20px;background-color:#3B388D;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:16px;white-space:nowrap;}
+    .main__header-search-button:hover{background-color:#2e2c74;}
+    .footer__wrapper{width:100%;position:fixed;left:0;right:0;bottom:0;}
+    .footer{width:100% !important; max-width:none !important; margin:0;}
+  </style>
+  <title>Страница не найдена</title>
+</head>
+<body>
+  <div class="header__wrapper">
+    <div class="main__header">
+      <div class="main__header-logo">
+        <picture class="main__header-picture">
+          <a href="/home"><img src="{% static 'assets/images/logo_white.png' %}" class="home__img" alt="CGCAL" width="100px" height="70px"/></a>
+        </picture>
+        <div class="main__header-name">
+          <a href="/home" class="main__header-name-href">❮ На главную</a>
+        </div>
+      </div>
+      <div class="main__header-search-box">
+        <input type="text" id="find" name="find" placeholder="Введите номер последовательности" class="main__header-search-input find__input">
+        <button class="main__header-search-button" onclick="if(typeof executeSearchQueryMain === 'function') { executeSearchQueryMain(); } else { console.error('executeSearchQueryMain not found'); }">Найти</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="page404-center">
+    <div style="text-align:center;">
+      <img src="{% static 'assets/images/page_not_found_gears.png' %}" alt="404" style="max-width:420px;width:35vw;height:auto;margin-bottom:16px;"/>
+      <div style="font-size:28px; font-weight:600; color:#3B388D;">
+        Кажется, такой страницы нет! Ошибка 404
+      </div>
+    </div>
+  </div>
+
+  <div class="footer__wrapper" style="margin-top:auto;">
+    <div class="footer">
+      <div class="footer__text">Последнее обновление</div>
+    </div>
+  </div>
+  <script>
+  // Резервная функция для поиска на 404-странице
+  if (typeof executeSearchQueryMain === 'undefined') {
+      window.executeSearchQueryMain = function() {
+          const searchInput = document.querySelector('.find__input');
+          if (!searchInput) { return; }
+          const query = searchInput.value.trim();
+          if (query) {
+              localStorage.setItem('savedSearchQuery', query);
+              window.location.href = '/home';
+          } else {
+              window.location.href = '/home';
+          }
+      };
+  }
+  // Загрузка времени последнего обновления, как на других страницах
+  document.addEventListener('DOMContentLoaded', function(){
+      var footerText = document.querySelector('.footer__text');
+      fetch('/checkDate').then(function(response){
+          if(!response.ok){throw new Error('Failed');}
+          return response.json();
+      }).then(function(data){
+          if(data.last_update){
+              footerText.textContent = 'Последнее обновление: ' + data.last_update;
+          }
+      }).catch(function(){ /* leave default text */ });
+  });
+  </script>
+</body>
+</html>
+
+

@@ -314,7 +314,6 @@ def search_SeqSelect(request):
             results.append(result)
 
     # Добавляем последовательности, найденные по OEIS ID, в результирующий список
-    # Создаем временный список для результатов OEIS ID
     oeis_id_results = []
     for seq in sequences:
          oeis_id_results.append({
@@ -334,7 +333,6 @@ def search_SeqSelect(request):
             results.append(oeis_result)
 
     # Поиск по последовательностям (если нет результатов в интерпретациях и алгоритмах)
-    # Этот блок теперь будет обрабатывать только случаи, когда поиск не был по OEIS ID и не нашел ничего в интерпретациях/алгоритмах
     if not results and not is_oeis_id:
         sequences = sequence_desc.objects.filter(
             Q(sequence_name__icontains=query) |
@@ -521,3 +519,7 @@ async def solve(request):
 
 def main_view(request):
     return render(request, 'main.html')
+
+# Страница 404 с сохранением шапки и подвала
+def not_found_view(request, exception=None):
+    return render(request, '404.html', status=404)

@@ -683,7 +683,7 @@ function noResults() {
     
     const suggestionsList = document.createElement('ul');
     suggestionsList.className = 'search-results__suggestions';
-    suggestionsList.style.listStyle = 'none';
+    suggestionsList.style.listStyle = 'disc';
     
     const suggestions = [
         'OEIS ID (например, A000045)',
