@@ -156,9 +156,17 @@ async function loadSequenceList() {
       if (response.ok) {
           const sequenceData = await response.json();
           
+          // Сортируем последовательности по OEIS_ID в алфавитном порядке
+          const sortedSequences = sequenceData.sort((a, b) => {
+              const idA = a.OEIS_ID.toUpperCase();
+              const idB = b.OEIS_ID.toUpperCase();
+              return idA.localeCompare(idB);
+          });
+          
           infoWrapper.innerHTML = '';
 
-          sequenceData.slice(-4).forEach(seq => {
+          // Берем первые 4 отсортированных последовательности
+          sortedSequences.slice(0, 4).forEach(seq => {
               const a = document.createElement('a');
               a.classList.add('home__find-href-content');
               a.href = `/main?find=${seq.OEIS_ID}`;
