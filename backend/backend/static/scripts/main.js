@@ -234,6 +234,42 @@ async function loadInterpretations(oeisId) {
   }
 }
 
+// Функция для автоматической корректировки высоты блока после загрузки контента
+async function adjustBlockHeight(blockElement) {
+  if (!blockElement) return;
+  
+  // Ждем загрузки всех изображений в блоке
+  const images = blockElement.querySelectorAll('img');
+  if (images.length > 0) {
+      await Promise.all(
+          Array.from(images).map(img => {
+              if (img.complete) return Promise.resolve();
+              return new Promise((resolve) => {
+                  img.onload = resolve;
+                  img.onerror = resolve; // Разрешаем даже при ошибке, чтобы не блокировать
+                  setTimeout(resolve, 5000); // Таймаут на случай, если изображение не загрузится
+              });
+          })
+      );
+  }
+  
+  // Даем браузеру время на перерисовку после загрузки контента и рендеринга MathJax
+  await new Promise(resolve => setTimeout(resolve, 200));
+  
+  // Убираем фиксированную высоту, если она была установлена, чтобы блок автоматически подстраивался
+  blockElement.style.height = 'auto';
+  
+  // Принудительно вызываем пересчет layout для корректного определения высоты
+  void blockElement.offsetHeight;
+  
+  // Для родительских блоков также убираем фиксированную высоту
+  const parentBlock = blockElement.closest('.info__block') || blockElement.closest('.func-block__right');
+  if (parentBlock) {
+      parentBlock.style.height = 'auto';
+      void parentBlock.offsetHeight;
+  }
+}
+
 // Load sequence data for a given OEIS ID
 async function loadSequence(oeisId) {
   try {
@@ -250,6 +286,8 @@ async function loadSequence(oeisId) {
               <div class="info__block1">${sequenceData[0].sequence_description}</div>
           `;
       await MathJax.typesetPromise([infoWrapper]);
+      // Корректируем высоту блока после загрузки контента
+      await adjustBlockHeight(infoWrapper);
   } catch (error) {
       console.error('Error occurred while loading sequence:', error);
   }
@@ -270,12 +308,13 @@ async function loadInterpretationsDetails(updateUrl = true) {
           
           // Отображаем данные интерпретации
           const infoWrapper = document.querySelector('.info__block2');
-          infoWrapper.style.minHeight = infoWrapper.offsetHeight + 'px'; // Сохраняем текущую высоту
           infoWrapper.innerHTML = `
               <div style="display:none" class="for_interp_id">${interpData[0].id}</div>
               <div>${interpData[0].interpretation_description}</div>
           `;
           await MathJax.typesetPromise([infoWrapper]);
+          // Корректируем высоту блока после загрузки контента
+          await adjustBlockHeight(infoWrapper);
           
           // Загружаем алгоритмы для выбранной интерпретации
           await loadAlgorithmsByInterpretation(updateUrl);
@@ -378,11 +417,6 @@ async function loadAlgorithmDetails(updateUrl = true) {
           const paramsWrapper = document.querySelector('.func-block__left-param');
           const funcWrapper = document.querySelector('.func-block__left-functional');
 
-          // Сохраняем текущие высоты блоков
-          infoWrapper.style.minHeight = infoWrapper.offsetHeight + 'px';
-          paramsWrapper.style.minHeight = paramsWrapper.offsetHeight + 'px';
-          funcWrapper.style.minHeight = funcWrapper.offsetHeight + 'px';
-          
           infoWrapper.innerHTML = `
               <div class="func-block__right-name">${algData[0].field_name}</div>
               <div class="func-block__right-desc">${algData[0].field_description}</div>
@@ -391,6 +425,8 @@ async function loadAlgorithmDetails(updateUrl = true) {
           paramsWrapper.innerHTML = '';
           funcWrapper.innerHTML = '';
           await MathJax.typesetPromise([infoWrapper]);
+          // Корректируем высоту блока после загрузки контента
+          await adjustBlockHeight(infoWrapper);
           
           const params = algData[0].parameters_name.split(',').map(param => param.trim());
           params.forEach(param => {
