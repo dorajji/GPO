@@ -56,11 +56,17 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (algName) {
               await loadAlgorithmsByInterpretation(false); // Передаем false, чтобы предотвратить обновление URL
               const selectorAlg = document.querySelector('.func-block__left-select');
+              let found = false;
               for (let i = 0; i < selectorAlg.options.length; i++) {
                   if (selectorAlg.options[i].text === algName) {
                       selectorAlg.selectedIndex = i;
+                      found = true;
                       break;
                   }
+              }
+              // Если алгоритм не найден, выбираем первый доступный
+              if (!found && selectorAlg.options.length > 0) {
+                  selectorAlg.selectedIndex = 0;
               }
               await loadAlgorithmDetails(false); // Передаем false, чтобы предотвратить обновление URL
           } else {
@@ -313,15 +319,25 @@ async function loadAlgorithmsByInterpretation(updateUrl = true) {
           
           if (algName) {
               // Если есть параметр alg, выбираем соответствующий алгоритм
+              let found = false;
               for (let i = 0; i < selector.options.length; i++) {
                   if (selector.options[i].text === algName) {
                       selector.selectedIndex = i;
+                      found = true;
                       break;
                   }
               }
-              // Если не нашли указанный алгоритм — 404
-              if (selector.selectedIndex === -1 || selector.options[selector.selectedIndex]?.text !== algName) {
-                  return redirectTo404();
+              // Если не нашли указанный алгоритм, выбираем первый доступный
+              if (!found && selector.options.length > 0) {
+                  selector.selectedIndex = 0;
+                  // Обновляем URL, убирая неверный параметр alg или заменяя его на первый доступный
+                  if (updateUrl) {
+                      const oeisId = urlParams.get('find');
+                      const interpretationName = urlParams.get('interp');
+                      const firstAlgName = selector.options[0].text;
+                      const newUrl = `/main?find=${oeisId}&interp=${encodeURIComponent(interpretationName)}&alg=${encodeURIComponent(firstAlgName)}`;
+                      window.history.pushState({}, '', newUrl);
+                  }
               }
           } else if (selector.options.length > 0) {
               // Если параметра alg нет, выбираем первый алгоритм
@@ -505,11 +521,17 @@ function setupEventListeners() {
           
           if (algName) {
               const selectorAlg = document.querySelector('.func-block__left-select');
+              let found = false;
               for (let i = 0; i < selectorAlg.options.length; i++) {
                   if (selectorAlg.options[i].text === algName) {
                       selectorAlg.selectedIndex = i;
+                      found = true;
                       break;
                   }
+              }
+              // Если алгоритм не найден, выбираем первый доступный
+              if (!found && selectorAlg.options.length > 0) {
+                  selectorAlg.selectedIndex = 0;
               }
               await loadAlgorithmDetails();
           }
