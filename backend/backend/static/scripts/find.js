@@ -552,7 +552,6 @@ style.textContent = `
 
     .main__header-search-button {
         height: 50px;
-        padding: 0 20px;
         background-color: #3B388D;
         color: white;
         border: none;
