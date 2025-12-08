@@ -172,7 +172,10 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
                         if (typeof searchQuery === 'string' && searchQuery.length > 0) {
                             snippet = extractContextSnippet(cleanText, searchQuery, 100);
                         }
-                        matchText.textContent = snippet;
+                        matchText.innerHTML = highlightQueryText(
+                            snippet,
+                            typeof searchQuery === 'string' ? searchQuery : ''
+                        );
                         matchItem.appendChild(matchText);
                         matchesContainer.appendChild(matchItem);
                     });
@@ -308,7 +311,10 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
                              if (typeof searchQuery === 'string' && searchQuery.length > 0) {
                                  snippet = extractContextSnippet(cleanText, searchQuery, 100);
                              }
-                             matchText.textContent = snippet;
+                            matchText.innerHTML = highlightQueryText(
+                                snippet,
+                                typeof searchQuery === 'string' ? searchQuery : ''
+                            );
                              matchItem.appendChild(matchText);
                              matchesContainer.appendChild(matchItem);
                          });
@@ -428,7 +434,10 @@ function displaySearchResults(results, searchQuery, isOEISSearch = false) {
                              if (typeof searchQuery === 'string' && searchQuery.length > 0) {
                                  snippet = extractContextSnippet(cleanText, searchQuery, 100);
                              }
-                             matchText.textContent = snippet;
+                            matchText.innerHTML = highlightQueryText(
+                                snippet,
+                                typeof searchQuery === 'string' ? searchQuery : ''
+                            );
                              matchItem.appendChild(matchText);
                              matchesContainer.appendChild(matchItem);
                          });
@@ -640,6 +649,13 @@ style.textContent = `
         margin-top: 3px;
         white-space: pre-wrap;
     }
+    
+    .search-result__highlight {
+        background-color: rgba(159, 197, 58, 0.65);
+        color: inherit;
+        padding: 0 2px;
+        border-radius: 3px;
+    }
         
     h3{
         margin-top: 0;
@@ -761,6 +777,32 @@ function extractCleanText(html) {
     div.innerHTML = text;
     text = div.textContent || div.innerText || '';
     return text.trim();
+}
+
+function escapeRegExp(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function escapeHTML(text) {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function highlightQueryText(text, query) {
+    if (!query) return escapeHTML(text);
+    const safeText = escapeHTML(text);
+    const escapedQuery = escapeRegExp(query);
+    try {
+        const regex = new RegExp(`(${escapedQuery})`, 'gi');
+        return safeText.replace(regex, '<span class="search-result__highlight">$1</span>');
+    } catch (e) {
+        console.error('Highlight regex error:', e);
+        return safeText;
+    }
 }
 
 // Функция для получения расширенного фрагмента вокруг найденного запроса
