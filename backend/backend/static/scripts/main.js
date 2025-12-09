@@ -165,8 +165,8 @@ async function loadSequenceList() {
           
           infoWrapper.innerHTML = '';
 
-          // Берем первые 4 отсортированных последовательности
-          sortedSequences.slice(0, 4).forEach(seq => {
+          // Выводим все отсортированные последовательности (по 4 в строке через CSS)
+          sortedSequences.forEach(seq => {
               const a = document.createElement('a');
               a.classList.add('home__find-href-content');
               a.href = `/main?find=${seq.OEIS_ID}`;

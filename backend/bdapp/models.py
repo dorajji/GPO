@@ -52,7 +52,8 @@ class algorithm(models.Model):
     update_date_algorithm = models.DateTimeField(auto_now=True) 
     
     def __str__(self):
-        return F"{self.Alg_ID}"
+        # Show human-friendly name in admin lists instead of internal ID
+        return F"{self.alg_name}"
     
 class sequence_tb(models.Model):
     M_ID = models.ForeignKey(sequence_desc, on_delete=models.CASCADE)

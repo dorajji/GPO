@@ -187,22 +187,19 @@ body {
 }
 .home__find-href {
   margin-top: 25px;
-  display: -webkit-box;
-  display: -ms-flexbox;
-  display: flex;
-  -webkit-box-orient: horizontal;
-  -webkit-box-direction: normal;
-      -ms-flex-direction: row;
-          flex-direction: row;
-  -ms-flex-pack: distribute;
-      justify-content: space-around;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 15px 30px;
   font-family: 'Lora', 'Regular', sans-serif;
   font-size: 15px;
   color: #3B388D;
-  gap: 30px;
+  justify-items: center;
 }
 .home__find-href-content {
-  margin: 0 10px;
+  display: block;
+  margin: 0;
+  text-align: center;
+  word-break: break-word;
 }
 .home__desc {
   width: 470px;
