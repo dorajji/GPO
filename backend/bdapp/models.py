@@ -62,4 +62,8 @@ class sequence_tb(models.Model):
     update_date_sequence_tb = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return F"{self.M_ID}"
+        oeis_id = self.M_ID.OEIS_ID
+        seq_name = self.M_ID.sequence_name or "—"
+        interp_name = self.Interp_ID.interpretation_name or "—"
+        alg_name = self.Alg_ID.alg_name or "—"
+        return f"{oeis_id} ({seq_name}, {interp_name}, {alg_name})"
